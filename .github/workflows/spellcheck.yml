@@ -8,5 +8,8 @@ jobs:
     steps:
     # The checkout step
     - uses: actions/checkout@master
-    - uses: rojopolis/spellcheck-github-actions@0.24.0
+    - uses: matheus23/md-spellcheck-action@v3.0.0
       name: Spellcheck
+      with:
+        files-to-check: "**/*.md"
+        words-to-ignore-file: ./.github/workflows/words-to-ignore.txt

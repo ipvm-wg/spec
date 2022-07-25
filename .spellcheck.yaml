@@ -5,7 +5,7 @@ matrix:
     d: en_US
   dictionary:
     encoding: utf-8
-    wordlists: ["./.github/workflows/words-to-ignore.txt"]
+    wordlists: [".github/workflows/words-to-ignore.txt"]
   pipeline:
   - pyspelling.filters.markdown:
   - pyspelling.filters.html:
