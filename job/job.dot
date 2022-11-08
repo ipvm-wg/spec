@@ -1,9 +1,39 @@
 digraph G {
-    Invocation [shape = box]
+    Pipeline -> {Job, JobL, JobR, JobE}
+
+    //
+
     Job [shape = box]
+    Job -> {Invocation, Config, Version, requestorDid}
 
-    Job -> {Invocation, Config, Version}
-
+    Invocation [shape = box]
     Invocation -> Wasm [label = "exec"]
-    Invocation -> {x, y, z} [label = "arg"]
+    Invocation -> {a, b, c} [label = "arg"]
+
+    //
+
+    JobL [shape = box]
+    JobL -> {InvocationL, ConfigL, VersionL, requestorDidL}
+
+    InvocationL [shape = box]
+    InvocationL -> WasmL [label = "exec"]
+    InvocationL -> {d, e, f} [label = "arg"]
+
+    //
+
+    JobR [shape = box]
+    JobR -> {InvocationR, ConfigR, VersionR, requestorDidR}
+
+    InvocationR [shape = box]
+    InvocationR -> WasmR [label = "exec"]
+    InvocationR -> {g, h, i} [label = "arg"]
+
+    //
+
+    JobR [shape = box]
+    JobR -> {InvocationR, ConfigR, VersionR, requestorDidR}
+
+    InvocationR [shape = box]
+    InvocationR -> WasmR [label = "exec"]
+    InvocationR -> {g, h, i} [label = "arg"]
 }
