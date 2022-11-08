@@ -1,0 +1,85 @@
+{
+    "type": "ipvm/job",
+    "version": "0.0.1",
+    "requestor": "did:key:zAlice",
+    "nonce": "ABCDEF",
+    "config": {
+        "label": "fission/run_the_reports",
+        "start": "asap",
+        "timeoutAt": 1667878395,
+        "maxGas": 4096,
+        "authz": ["QmUcan1", "QmUcan2"], // TODO move to post-negotiated?
+        "visibility": "public",
+        "verification": {
+            "method": "ipvm/optimistic-zk",
+            "min": 1,
+            "replication": 2,
+            "referee": "ipns://abcdefghi"
+        }
+    },
+    "jobs": {
+        "database": {
+            "run": {
+                "effect": {
+                    "with": "dnslink://example.com",
+                    "do": "dnslink/resolve",
+                    "timeout": "30s"
+                }
+            }
+        },
+        "start": {
+            "run": {
+                "wasm": "bafyWasm",
+                "input": [
+                    { "w": "Qm123456" },
+                    { "x": "Qmabcdef" },
+                    { "y": { "from": "database", "out": 0 } } // "Let the dataflow through you"
+                    { "z": "QmFooBar" },
+                ],
+                "affinities": [], // TODO lives here, or in
+            },
+            "after": {
+                "effects": {
+                    "bell": {
+                        "run": "system/bell",
+                        "when": "always"
+                    }
+                }
+            }
+        },
+        "left": {
+            "run": {
+                "wasm": "bafyWasmLeft",
+                "input": ["bafySomeArg"]
+            }
+        },
+        "subleft": {
+            "run": {
+                "wasm": "bafyWasmSubLeft",
+                "input": [101, {"from": "left"}, 42]
+            }
+        },
+        "right": {
+            "run": {
+                "wasm": "bafyWasmRight",
+                "input": [{"from": "start", "output": 4}, {"from": "database"}]
+            }
+        },
+        "end": {
+            "run": {
+                "wasm": "bafyWasmEnd",
+                "input": {
+                    "foo": "jobs/left/subleft/"
+                }
+            }
+        }
+    }
+    "signature": "abcdef"
+}
+
+{
+    "type": "ipvm/deal",
+    "version": "0.0.1",
+    "accepter": "",
+    "job": "Qmabcdef"
+}

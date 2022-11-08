@@ -30,10 +30,10 @@ digraph G {
 
     //
 
-    JobR [shape = box]
-    JobR -> {InvocationR, ConfigR, VersionR, requestorDidR}
+    JobE [shape = box]
+    JobE -> {InvocationE, ConfigE, VersionE, requestorDidE}
 
-    InvocationR [shape = box]
-    InvocationR -> WasmR [label = "exec"]
-    InvocationR -> {g, h, i} [label = "arg"]
+    InvocationE [shape = box]
+    InvocationE -> WasmR [label = "exec"]
+    InvocationE -> {j, k, l} [label = "arg"]
 }

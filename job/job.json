@@ -19,7 +19,7 @@
     },
     "run": {
         "wasm": "bafyWasm",
-        "input": [
+        "args": [
             { "w": "Qm123456" },
             { "x": "Qmabcdef" },
             { "y": { "with": "dnslink://example.com", "run": "dnslink/resolve" } }
@@ -33,11 +33,39 @@
             "run": "dnslink/resolve"
         }
     },
-    "after": {
+    "then": {
         "effects": {
             "bell": {
                 "run": "system/bell",
                 "on": "always"
+            }
+        },
+        "jobs": {
+            "left": {
+                "run": {
+                    "wasm": "bafyWasmLeft",
+                    "args": ["bafySomeArg"]
+                },
+                "then": {
+                    "jobs": {
+                        "subleft": {
+                            "run": {
+                                "wasm": "bafyWasmSubLeft",
+                                "args":
+                            }
+                        }
+                    }
+                }
+            },
+            "right": {
+                "run": "b"
+            },
+            "end": {
+                "run": {
+                    "wasm": "bafyWasmEnd",
+                    "input": {
+                        "foo": "jobs/left/subleft/"
+                }
             }
         }
     },
