@@ -1,4 +1,4 @@
-# UCAN/CACAO Interoperation Spec v0.1.0
+# IPVM Job Spec
 
 ## Editors
 
