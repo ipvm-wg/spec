@@ -1,0 +1,9 @@
+digraph G {
+    Invocation [shape = box]
+    Job [shape = box]
+
+    Job -> {Invocation, Config, Version}
+
+    Invocation -> Wasm [label = "exec"]
+    Invocation -> {x, y, z} [label = "arg"]
+}
