@@ -27,10 +27,27 @@ IPVM provides a deterministic-by-default, content addressed execution environmen
 > Every application has an inherent amount of irreducible complexity. The only question is: Who will have to deal with it — the user, the application developer, or the platform developer?
 > -- [Tesler's Law](https://en.wikipedia.org/wiki/Law_of_conservation_of_complexity)
 
-With "jobs" as the unit of execution, programmers gain flexible cache granularity, parallelism, and ___. Partial failure is Transactionality 
+With "jobs" as the unit of execution, programmers gain flexible cache granularity, parallelism, and ___.
 
-* [Convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration).
+Configuration DSLs like IPVM jobs can become very complex. By their nature, jobs specs are responsible for describing as many 
 
+By having to account for a huge number of possible cases, the burden is placed on the programmer in exchange for a high degree of control. Sensible defaults, [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration), and scoped settingshelp aleviate this problem.
+
+Partial failure in a deterministic system is simplified by using transactional semantics for the job as a whole. The difficult case lies with any effects that update the real world nonmonotonically.
+
+
+### 1.1.1 Nonmonotonic Effects
+
+
+# 2 Anatomy
+
+## 2.1 Job
+
+An IPVM job MUST be composed of the following parts:
+
+* 
+
+## 2.2 
 
 # 2 Dataflow Graph
 
@@ -43,6 +60,21 @@ With "jobs" as the unit of execution, programmers gain flexible cache granularit
 * Wasm execution in depth
 * Spec format IPLD
   * Input addressing
+
+## 2.2 Implicit Parallelism
+
+IPVM does not allow programmer control over parallelism. The resources available to the scheulder MAY be very different from run to run.
+
+The concurrency plan MUST be derived from the dataflow dependencies.
+
+
+# 3 Higher Abstractions
+
+At the lowest level, IPVM jobs only describe the loading of immutible data.
+
+* Actors
+* Vats
+* Map/reduce
 
 # 3 Acknowledgments
 
