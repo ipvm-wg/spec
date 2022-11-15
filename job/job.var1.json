@@ -27,9 +27,10 @@
                 }
             }
         },
-        "start": {
+        "kickoff": {
             "run": {
-                "wasm": "bafyWasm",
+                "type": "wasm/1.0",
+                "cid": "bafyWasm",
                 "input": [
                     { "w": "Qm123456" },
                     { "x": "Qmabcdef" },
@@ -38,25 +39,44 @@
                 ],
                 "affinities": [], // TODO lives here, or in
             },
-            "after": {
-                "effects": {
-                    "bell": {
-                        "run": "system/bell",
-                        "when": "always"
-                    }
+            "after": [
+                {
+                    "when": "always",
+                    "do": "bell"
+                }
+            ]
+        },
+        "bell": {
+            "run": {
+                "effect": "stdlib/system/bell",
+                "do": "bell/ring"
+            }
+        },
+        "afterKickoff": {
+            "effects": {
+                "bell": {
+                    "run": "system/bell",
+                    "when": {"after": "kickoff", "scenario": "always"}
+                    "input": "kickoff/_"
                 }
             }
         },
         "left": {
-            "run": {
-                "wasm": "bafyWasmLeft",
-                "input": ["bafySomeArg"]
+            "atomically": {
+                "sub1": {
+                    "wasm": "bafyWasmLeftSub1",
+                    "input": ["bafySomeArg1"]
+                },
+                "sub2": {
+                    "wasm": "bafyWasmLeftSub2",
+                    "input": ["bafySomeArg2"]
+                }
             }
         },
         "subleft": {
             "run": {
                 "wasm": "bafyWasmSubLeft",
-                "input": [101, {"from": "left"}, 42]
+                "input": [101, {"from": "left/sub1"}, 42]
             }
         },
         "right": {
@@ -82,4 +102,11 @@
     "version": "0.0.1",
     "accepter": "",
     "job": "Qmabcdef"
+}
+
+{
+    "type": "ipvm/invocation",
+    "version": "0.0.1",
+    "wasm": "Qm12345",
+    "inputs": ["Qmabcdef", "bafyghijk"]
 }
