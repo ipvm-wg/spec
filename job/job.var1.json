@@ -1,5 +1,5 @@
 {
-    "type": "ipvm/job",
+    "type": "ipvm/workflow",
     "version": "0.0.1",
     "requestor": "did:key:zAlice",
     "nonce": "ABCDEF",
@@ -19,79 +19,55 @@
     },
     "jobs": {
         "database": {
-            "run": {
-                "effect": {
-                    "with": "dnslink://example.com",
-                    "do": "dnslink/resolve",
-                    "timeout": "30s"
-                }
-            }
+            "type": "effect",
+            "with": "dnslink://example.com",
+            "do": "dnslink/resolve",
+            "timeout": "30s"
         },
         "kickoff": {
-            "run": {
-                "type": "wasm/1.0",
-                "cid": "bafyWasm",
-                "input": [
-                    { "w": "Qm123456" },
-                    { "x": "Qmabcdef" },
-                    { "y": { "from": "database", "out": 0 } } // "Let the dataflow through you"
-                    { "z": "QmFooBar" },
-                ],
-                "affinities": [], // TODO lives here, or in
-            },
-            "after": [
-                {
-                    "when": "always",
-                    "do": "bell"
-                }
-            ]
+            "type": "wasm/1.0",
+            "with": "bafyWasm",
+            "input": [
+                { "w": "Qm123456" },
+                { "x": "Qmabcdef" },
+                { "y": { "from": "database", "out": 0 } } // "Let the dataflow through you"
+                { "z": "QmFooBar" },
+            ],
+            "affinities": [], // TODO lives here, or in
+            "always": ["bell"]
         },
         "bell": {
-            "run": {
-                "effect": "stdlib/system/bell",
-                "do": "bell/ring"
-            }
+            "effect": "stdlib/system/bell",
+            "do": "bell/ring"
         },
         "afterKickoff": {
-            "effects": {
-                "bell": {
-                    "run": "system/bell",
-                    "when": {"after": "kickoff", "scenario": "always"}
-                    "input": "kickoff/_"
-                }
-            }
+             "run": "system/bell",
+             "when": {"after": "kickoff", "scenario": "always"}
+             "input": "kickoff/_"
         },
         "left": {
-            "atomically": {
-                "sub1": {
-                    "wasm": "bafyWasmLeftSub1",
-                    "input": ["bafySomeArg1"]
-                },
-                "sub2": {
-                    "wasm": "bafyWasmLeftSub2",
-                    "input": ["bafySomeArg2"]
-                }
+            "sub1": {
+                "wasm": "bafyWasmLeftSub1",
+                "input": ["bafySomeArg1"]
+            },
+            "sub2": {
+                "wasm": "bafyWasmLeftSub2",
+                "input": ["bafySomeArg2"]
             }
         },
         "subleft": {
-            "run": {
-                "wasm": "bafyWasmSubLeft",
-                "input": [101, {"from": "left/sub1"}, 42]
-            }
+            "wasm": "bafyWasmSubLeft",
+            "input": [101, {"from": "left/sub1"}, 42]
         },
         "right": {
-            "run": {
-                "wasm": "bafyWasmRight",
-                "input": [{"from": "start", "output": 4}, {"from": "database"}]
-            }
+            "wasm": "bafyWasmRight",
+            "input": [{"from": "start", "output": 4}, {"from": "database"}]
         },
         "end": {
-            "run": {
-                "wasm": "bafyWasmEnd",
-                "input": {
-                    "foo": "jobs/left/subleft/"
-                }
-            }
+            "wasm": "bafyWasmEnd",
+            "input": [
+                {"foo": "jobs/left/subleft/"}
+            ]
         }
     }
     "signature": "abcdef"
