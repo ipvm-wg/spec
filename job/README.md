@@ -129,6 +129,44 @@ Update an A record
 
 ## 4.2 Bacalhau
 
+## 4.2 WarpForge
+
+<!-- WIP PROPOSAL FOR @warpfork -->
+
+``` json
+{
+  "container": {
+    "type": "ipvm/effect",
+    "with": WARPFORGE,
+    "do": "container/build",
+    "inputs": {
+        "rootfs": "abc",
+        "gawk": "def",
+        "data": "ghi"
+    }
+  },
+  "awk-test": {
+    "type": "ipvm/warpforge",
+    "with": "container/out",
+    "do": "script/interpret",
+    "inputs": {
+        "interpreter": "bin/sh",
+        "contents": [
+          "mkdir /out",
+          "/tools ..."
+        ]
+    },
+    "outputs": {
+      "out": {
+        "from": "/out",
+        "packtype": "tar"
+      }
+    }
+  }
+}
+
+```
+
 
 # 5 Exception Handling
 
@@ -178,10 +216,23 @@ The outer wrapper of a job contains the
         { "x": "Qmabcdef" },
         { "y": { "from": "database", "out": 0 } }
         { "z": "QmFooBar" },
-      ]
+      ],
+      outputs: ["a", "b"] <!-- FIXME component model instead? -->
     },
     right: {
-      type: "ipvm/wasm",
+      type: "ipvm/warpforge",
+      with: ____,
+      do: "build",
+      inputs: {
+        "rootfs": "abc",
+        "gawk": "def",
+        "data": "ghi"
+      },
+      steps: {
+        awk-test: {
+        
+        }
+      }
     },
     end: {
       type: "ipvm/wasm",
