@@ -1,4 +1,4 @@
-# IPVM Job Spec
+# IPVM Job Configuration Spec v0.1.0
 
 ## Editors
 
@@ -6,169 +6,188 @@
 
 ## Authors
 
-* [Blaine Cook](https://github.com/blaine), [Fission](https://fission.codes)
-* [Zeeshan Lakhani](https://github.com/zeeshanlakhani), [Fission](https://fission.codes)
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
-    
+<!-- Provisionally: * [Simon Worthington](https://github.com/simonwo), [Bacalhau Project](https://www.bacalhau.org/) -->
+
 ## Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
 # 0 Abstract
 
-An IPVM "job" is a declarative description of WebAssembly and managed effects to be run by the IPVM runtime.
+The IPVM job configuration defines the global parameters for a proposed job, the dependenceis between steps, the distrinction between 
 
 # 1 Motivation
 
-IPVM provides a deterministic-by-default, content addressed execution environment. Execution may always be run locally, but there are many cases where remote exection is desirable: access to large data, faster processors, trusted execution environments, or access to specialized hardware, among others.
+> 8. A programming language is low level when its programs require attention to the irrelevant.
+> Alan Perlis, Epigrams on Programming 
 
-## 1.1 Minimizing Complexity
+Any programming langauge must include invocation. The IPVM Job configuration DSL provides a configuration wrapper for ___. 
 
-> Every application has an inherent amount of irreducible complexity. The only question is: Who will have to deal with it — the user, the application developer, or the platform developer?
-> -- [Tesler's Law](https://en.wikipedia.org/wiki/Law_of_conservation_of_complexity)
+A declarative invocation liberates the programmer from worrying about sequencing, parallelism, distribution, error handling, and _______. Such a specification also grants power to the runtime (and especially the distributed scheduler) to coordinate the running of 
 
-With "jobs" as the unit of execution, programmers gain flexible cache granularity, parallelism, and ___.
-
-Configuration DSLs like IPVM jobs can become very complex. By their nature, jobs specs are responsible for describing as many 
-
-By having to account for a huge number of possible cases, the burden is placed on the programmer in exchange for a high degree of control. Sensible defaults, [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration), and scoped settingshelp aleviate this problem.
-
-Partial failure in a deterministic system is simplified by using transactional semantics for the job as a whole. The difficult case lies with any effects that destructively update the real world.
-
-# 2 Effect System
-
-## 2.1 Pure Functions
-
-## 2.2 Nondestructive Effects
-
-## 2.3 Destructive Effects
-
-# 3 Job Anatomy
-
-An IPVM job MUST be composed of the following parts:
-
-* Header
-* Jobs
-* Signature
-
-## 3.1 Header
-
-## 3.2 Jobs
-
-The `jobs` field MUST describe a series of jobs that are expected to run in the session. Jobs MUST be one of the following:
-
-1. A pure computation described by pure (content-addressed) inputs to a Wasm binary
-2. A named effect with pure (content-addressed) inputs to be executed by the runtime
-3. One of the above, with an input that is the result of a previous step 
+The aim of this specification is to allow the configuration of jobs with 
 
 
-### 3.2.1 Web Assembly Job
+
+
+https://www.ams.org/journals/tran/1936-039-03/S0002-9947-1936-1501858-0/S0002-9947-1936-1501858-0.pdf
+
+confluence
+
+# 2 Task
+
+While an indivdual invocation is structured like an AST (and eventually memoized as such), the tasks in a job spec MAY be unordered. The ordering MUST be implied from the inputs, flowing source to sink.
+
+All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
+
+| Field     | Type                | Description                      | Required |
+|-----------|---------------------|----------------------------------|----------|
+| `type`    | `string`            | The type of task (Wasm, etc)     | Yes      |
+| `with`    | `CID`               | Reference to the Wasm to run     | Yes      |
+| `input`   | `[{String => CID}]` | Arguments to the Wasm executable | Yes      |
+| `always`  | `[Label]`           | An                               | No       |
+| `onError` | `[Label]`           | An                               | No       |
+
+<!-- FIXME make onError a type of input? Hmm it also needs to take input. We may be able to reconstruct an `always` out of more primitive parts --> 
 
 ``` json
 {
-  "type": "wasm/1.0",
-  "with": "bafkreie53mk3duiynh5pzmhuzadaif6hpizod5wr6dt34canmxo7j7jfcu",
-  "input": [
-      { "firstName": "Boris" },
-      { "lastName": "Mann" }
-  ],
-  "maxGas": 4600,
-  "on": {
-      "error": [],
-      "success": []
-  }
+ errA: {
+   type: "ipvm/wasm",
+   effect:
+ }
 }
 ```
 
-### 3.2.2 Effect Job
+## 2.1 Input
 
-### 3.2.3 Pipelining
+# 3 Pure Wasm
 
-Each job MUST be labelled with a string. This label MUST be treated as local to the enclosing workflow. Jobs MAY reference each other's output by label in the `from` field. In the case of multiple return values, the index of the output may be further selected with the `out` field. For exammple:
+When treated as a black box, the deterministic subset of Wasm may be treated as a pure function.
 
-```json
+The Wasm configuration MUST extend the core task type with the following fields:
+
+| Field    | Type                | Description                      | Required | Default                       |
+|----------|---------------------|----------------------------------|----------|-------------------------------|
+| `type`   | `"ipvm/wasm/1.0"`   | Identify this task as Wasm 1.0   | Yes      |                               |
+| `with`   | CID                 | Reference to the Wasm to run     | Yes      |                               |
+| `input`  | `[{String => CID}]` | Arguments to the Wasm executable | Yes      |                               |
+| `maxGas` | Integer             |                                  | No       | 1000 <!-- ...or something --> |
+
+# 4 Effects
+
+The `with` field MAY be filled from a relative value (previous step)
+
+<!-- Bell? -->
+
+## 4.1 DNS
+
+| Field   | Type                | Description                                                           | Required    |
+|---------|---------------------|-----------------------------------------------------------------------|-------------|
+| `type`  | `"ipvm/effect/dns"` | Identify this job as a Wasm 1.0                                       | Yes         |
+| `with`  | URI                 | DNS URI (domain name or subdomain)                                    | Yes         |
+| `do`    | crud                | Any ability in the `crud` namespace (e.g. `crud/read`, `crud/update`) | Yes         |
+| `value` | String              |                                                                       | On mutation |
+
+More specific uses MAY be built out of the primitive DNS resolver.
+
+<!-- FIXME pointer/deref, pointer/resolve? -->
+
+### 4.1.1 Examples
+
+Read from [DNSLink](https://dnslink.io)
+
+``` json
 {
-  "fullName": {
-    "type": "wasm/1.0",
-    "with": "bafkreie53mk3duiynh5pzmhuzadaif6hpizod5wr6dt34canmxo7j7jfcu",
-    "input": [
-        { "firstName": "Boris" },
-        { "lastName": "Mann" }
-    ]
-  },
-  "count": {
-    "type": "wasm/1.0",
-    "with": "bafkreiegbnixdoqsohfz5oninnhpcpwsf7rg6ewnx2lvhp7p5axejrph64",
-    "input": [
-        { "name": {"from": "fullName", "out": 0 } }
-    ]
-  }
+  "type": "ipvm/effect",
+  "with": "dns://_dnslink.example.com?TYPE=TXT",
+  "do": "crud/read" 
 }
 ```
 
-The above is roughly equivalent to the (local) function call:
+Update an A record
 
-```js
-fullName({firstName: "Boris", lastName: "Mann"})[0].count()
+``` json
+{
+  "type": "ipvm/effect",
+  "with": "dns://_dnslink.example.com?TYPE=A",
+  "do": "crud/update",
+  "value": "12.345.67.890"
+}
 ```
 
-<!-- FIXME check if Wasm Components / WIT solve for named outputs -->
+[did:dns](https://danubetech.github.io/did-method-dns/)
 
-All resulting graphs MUST be acyclic. The parser MUST check for any cycles and fail immeditely.
+``` json
+{
+  "type": "ipvm/effect",
+  "with": "dns://_key1._did.example.com?TYPE=URI",
+  "do": "crud/read" 
+}
+```
 
-
-
-
-
-
-
-
-* Automatic (and deterministic) parallelism
-* Dataflow / job graph
-* Effects System
-* Partial Failure & Transactionality 
-* Auth: SPKI & object capabilities
-
-* Wasm execution in depth
-* Spec format IPLD
-  * Input addressing
-
-## 2.2 Implicit Parallelism
-
-IPVM does not allow programmer control over parallelism. The resources available to the scheulder MAY be very different from run to run.
-
-The concurrency plan MUST be derived from the dataflow dependencies.
+## 4.2 Bacalhau
 
 
-# 3 Higher Abstractions
+# 5 Exception Handling
 
-At the lowest level, IPVM jobs only describe the loading of immutible data.
+Note that while IPVM MUST treat the pure tasks together as transactional, it is not possible to roll back any destructive effects that have been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect.
 
-* Actors
-* Vats
-* Map/reduce
+It is often desirable to fire a specific job in the case that a job fails. Such cases MAY include wall-clock timeouts, running out of gas, loss of network access, or ___, among others.
 
-# 3 Acknowledgments
+Each task MAY include a failure job to run on failure.
 
-* [Quinn Wilton](https://github.com/QuinnWilton), Fission
-* [Eric Myhre](https://github.com/warpfork), Protocol Labs
-* [Luke Marsden](https://github.com/lukemarsden), Protocol Labs
-* [David Aronchick](https://www.davidaronchick.com/), Protocol Labs
-* [Irakli Gozalishvili](https://github.com/Gozala), DAG House
-* [Hugo Dias](https://github.com/hugomrdias), DAG House
-* [Mikeal Rogers](https://github.com/mikeal/), DAG House
-* [Juan Benet](https://github.com/jbenet/), Protocol Labs
-* [Christine Lemmer-Webber](https://github.com/cwebber), Spiritely Institute
-* [Mark Miller](https://github.com/erights), Agoric
-* [Peter Alvaro](https://github.com/palvaro), UC Santa Cruz
-* [Joe Hellerstein](https://github.com/jhellerstein), UC Berkley
-
-# 4 Prior Art
-
-* [Docker Job Controller](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
-* BucketVM (UCAN Invocation)
-* [WarpForge "Formula" v1](https://github.com/warpfork/warpforge/blob/master/examples/110-formula-usage/example-formula-exec.md)
-* [Bacalhau Job Spec](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L192)
+Note that effectful exception handlers that depend on specific capabilities (such as network access) MAY fail for the same reason as the job that caused the exception to be thrown. Running a pure effect is RECOMMENDED.
 
 
-https://www.tweag.io/blog/2020-09-10-nix-cas/
+
+# 6 Task Scheduler
+
+<!-- FIXME maybe move to execution spec? Probably worth a few words here at least -->
+
+# 7 Container
+
+The outer wrapper of a job contains the 
+
+| Field       | Type               | Description                   | Required |
+|-------------|--------------------|-------------------------------|----------|
+| `type`      | `"ipvm/job"`       | Object type identifier        | Yes      |
+| `version`   | `"0.1.0"`          | IPVM job version              | Yes      |
+| `requestor` | DID                | Requestor's DID               | Yes      |
+| `run`       | `{String => Task}` | Individual named tasks        | Yes      |
+| `signature` | Varsig             | Signature of all other fields | Yes      |
+
+``` json
+{
+  type: "ipvm/job"
+  version: "0.1.0"
+  reuqestor: "did:key:zAlice",
+  nonce: "xjd72gs_k",
+  run: {
+    start: {
+      type: "ipvm/effect",
+      with: "",
+      do: "ipvm/dnslink/resolve"
+    },
+    left: {
+      type: "ipvm/wasm",
+      with: myWasm,
+      inputs: [
+        { "w": "Qm123456" },
+        { "x": "Qmabcdef" },
+        { "y": { "from": "database", "out": 0 } }
+        { "z": "QmFooBar" },
+      ]
+    },
+    right: {
+      type: "ipvm/wasm",
+    },
+    end: {
+      type: "ipvm/wasm",
+
+    }
+  },
+  signature: 10100010010011
+}
+```

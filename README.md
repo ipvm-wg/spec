@@ -1,217 +1,176 @@
-# IPVM
+# Interplanetary Virtual Machine (IPVM) Spec v0.1.0
 
-This document currently describes the high-level project goals.
+## Editors
 
-# 🤹‍♀️ Separate Projects
+* [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
 
-1. Autocodec
-2. wasm-ipfs
-3. IPVM
+## Authors
 
-These are related, but separate. The relatedness comes from the fact that if we have one Wasm engine in IPFS, then the other components can rely on it too.
+* [Blaine Cook](https://github.com/blaine), [Fission](https://fission.codes)
+* [Zeeshan Lakhani](https://github.com/zeeshanlakhani), [Fission](https://fission.codes)
+* [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
+    
+## Language
 
-# :no_good_woman: Antigoals: What An IPVM Is Not
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-* A replacement of IPFS internals — that's wasm-ipfs
-* A language for distributed applications
-* A WASI interface
-* A new blockchain
+# 0 Abstract
 
-# What Is An IPVM?
+IPVM
 
-To date, IPFS has been a project focused on data. IPVM is the codename for an attempt to bring execution to IPFS. To this end, IPVM aims to be the easiest, fastest, most secure, and open way to run Wasm anywhere.
+An IPVM "job" is a declarative description of WebAssembly and managed effects to be run by the IPVM runtime.
 
-Another way to describe IPVM would be "an open, decentralized, and local-first competitor to AWS Lambda".
+# 1 Motivation
 
-The project leverages Wasm, content addressing, SPKI, and object capabilities to liberate computation from depending on specific prenegotiated services like the big cloud providers. Execution should scale flexibly from on-device by default all the way up to edge PoPs and data centers.
+IPVM provides a deterministic-by-default, content addressed execution environment. Execution may always be run locally, but there are many cases where remote exection is desirable: access to large data, faster processors, trusted execution environments, or access to specialized hardware, among others.
 
-## 📋 High-Level Attributes
+## 1.1 Minimizing Complexity
 
-* Wasm-on-IPFS
-* Declarative invocation (not an ABI, see section below)
-* Captured results, re-ingested to IPFS
-* A distributed scheduler
-  * Single vs cron, local vs remote vs either, etc
-* Matchmaking
-  * Poster/acceptor 
-  * Push-to-remote
-* (Global) memoization table & adaptive optimization
-* Managed effects (via an IPVM runtime)
-* Mobile (ambient) computing, compute-to-data, and data-to-compute
-* "The HTTP of Compute"
-* Stretch: autonomous agents
+> Every application has an inherent amount of irreducible complexity. The only question is: Who will have to deal with it — the user, the application developer, or the platform developer?
+> -- [Tesler's Law](https://en.wikipedia.org/wiki/Law_of_conservation_of_complexity)
 
-## :woman_scientist: Research Questions
+With "jobs" as the unit of execution, programmers gain flexible cache granularity, parallelism, and ___.
 
-### Pragmatics
+Configuration DSLs like IPVM jobs can become very complex. By their nature, jobs specs are responsible for describing as many 
 
-Projects like IPVM live and die by balancing power with ease of use. What are the easiest models for users to interact with the system? Clearly BYOL (bring-you-own-language) is a major advantage of Wasm. Are the specific Wasm runtimes that are easier to work with than others?
+By having to account for a huge number of possible cases, the burden is placed on the programmer in exchange for a high degree of control. Sensible defaults, [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration), and scoped settingshelp aleviate this problem.
 
-The current hypothesis is "convention over configuration" for defining attributes such as when effects should be run, if subjobs are run concurrently, and so on. One direction is to ask developers to configure a small-but-consistent input and output data structure (e.g. as you often see in middleware). This would open up dataflow analysis and (likely pessimistic) call-by-need semantics ("forcing the effect thunks"), removing the need for complex configuration and strategies from the developer, unless they want to overwrite them.
+Partial failure in a deterministic system is simplified by using transactional semantics for the job as a whole. The difficult case lies with any effects that destructively update the real world.
 
-### Cost semantics
+# 2 Effect System
 
-* Can it run locally vs incur network to kick over to a more powerful machine?
-* To what degree is it possible to hide this complexity from the programmer?
+## 2.1 Pure Functions
 
-### Trust & Verification Model
+## 2.2 Nondestructive Effects
 
-* Who can decrypt this data?
-* How do I know that this is the right answer?
-* Who are bad actors in the system?
-Are there opportunities for correct-by-construction code?
+## 2.3 Destructive Effects
 
-### Matchmaking & Discovery
+# 3 Job Anatomy
 
-* How quickly can a posted job be executed
-* Who is equipped to run specific functionality or effects?
-* How do we prevent wasted duplicate computation?
-* What does a push model look like in this model (e.g. to a specific provider)
+An IPVM job MUST be composed of the following parts:
 
-### Effect Systems
+* Header
+* Jobs
+* Signature
 
-* "Don't accidentally send the Tweet twice"
-* What's the best way to fit effects into a pure invocation model?
-* How can we check that it actually ran?
-* Should continuations be modelled as delimited effects?
-  * If so, perhaps the runtime should have low-ish level `shift` & `reset` calls
-* How hard should we lean into defunctionalization?
-* Should we support message passing and/or IPC?
+## 3.1 Header
 
-### Cooperative Optimization
+## 3.2 Jobs
 
-* Do typical compiler and VM techniques like JIT and memoization apply?
-  * Can we share intermediate results of a computation and store them in a global substrate that anyone can participate in?
+The `jobs` field MUST describe a series of jobs that are expected to run in the session. Jobs MUST be one of the following:
 
-## 📃 Declarative Invocation
+1. A pure computation described by pure (content-addressed) inputs to a Wasm binary
+2. A named effect with pure (content-addressed) inputs to be executed by the runtime
+3. One of the above, with an input that is the result of a previous step 
 
-The current hypothesis is that invocations can be configured as a declarative description containing at least:
 
-* The CID of the Wasm blob to execute
-* The CIDs of the argument
-* Any configuration that overrides defaults
-    * Max gas
-    * When to run (i.e. cron)
-    * Associated UCAN or CapTP
-    * ...and so on...
+### 3.2.1 Web Assembly Job
 
-![](./assets/dag-invocation.png)
+``` json
+{
+  "type": "wasm/1.0",
+  "with": "bafkreie53mk3duiynh5pzmhuzadaif6hpizod5wr6dt34canmxo7j7jfcu",
+  "input": [
+      { "firstName": "Boris" },
+      { "lastName": "Mann" }
+  ],
+  "maxGas": 4600,
+  "on": {
+      "error": [],
+      "success": []
+  }
+}
+```
 
-## 🧾 Captured Session / Receipts
+### 3.2.2 Effect Job
 
-![](./assets/dag-results.png)
+### 3.2.3 Pipelining
 
-The output may include instructions to run further computation (e.g. continuations or other effects). Represented in the diagram below as a dashed line, sending email or enqueuing a new job are handled by the IPVM runtime. [NB: The exact mechanism is not settled, the exact mechanisms are all subject to change]
+Each job MUST be labelled with a string. This label MUST be treated as local to the enclosing workflow. Jobs MAY reference each other's output by label in the `from` field. In the case of multiple return values, the index of the output may be further selected with the `out` field. For exammple:
 
-![](./assets/dag-effect.png)
+```json
+{
+  "fullName": {
+    "type": "wasm/1.0",
+    "with": "bafkreie53mk3duiynh5pzmhuzadaif6hpizod5wr6dt34canmxo7j7jfcu",
+    "input": [
+        { "firstName": "Boris" },
+        { "lastName": "Mann" }
+    ]
+  },
+  "count": {
+    "type": "wasm/1.0",
+    "with": "bafkreiegbnixdoqsohfz5oninnhpcpwsf7rg6ewnx2lvhp7p5axejrph64",
+    "input": [
+        { "name": {"from": "fullName", "out": 0 } }
+    ]
+  }
+}
+```
 
-## :spiral_calendar: Scheduler
+The above is roughly equivalent to the (local) function call:
 
-IPVM needs a way of scheduling computation, signalling made matches, returning control to the job queue, and starting continuations? Linearizability is possibly required in the general case; what's the easiest way to signal weaker consistency? How does the scheduler handle failure of nodes, network partitions, etc?
+```js
+fullName({firstName: "Boris", lastName: "Mann"})[0].count()
+```
 
-What are the correct default behaviours? Should IPVM computation always operate by (concurrent) graph reduction, or do we need to specify evaluation (and restart) strategies a la Erlang?
+<!-- FIXME check if Wasm Components / WIT solve for named outputs -->
 
-## :handshake: Trust Model
+All resulting graphs MUST be acyclic. The parser MUST check for any cycles and fail immeditely.
 
-UCAN & OCAP/CapTP
-Execution Metering
 
-* https://github.com/ucan-wg/spec
-* https://spritelyproject.org/news/what-is-captp.html
 
-IPVM will often (not always!) execute on remote machines controlled by untrusted third parties. This is potentially precarious for all involved. Some trust is required between participants in all cases.
 
-In offline scenarios, such trust may be provided via SPKI. In live systems, ocap (likely CapTP) should be preferred.
 
-### Open Questions
 
-* Is gas granted directly by capability? (i.e. is gas first-class or an effect?)
-* Can SPKI and CapTP interoperate directly?
 
-## :dollar: Payments
 
-Computation is a scarce resource. IPVM is not anti-money; while altruistic computation is _highly encouraged,_ charging for computation is going to quickly become a de facto requirement. The current hypothesis is to bake micropayment capabilities directly into the platform to avoid the immediate capture by prenegotiated providers.
+* Automatic (and deterministic) parallelism
+* Dataflow / job graph
+* Effects System
+* Partial Failure & Transactionality 
+* Auth: SPKI & object capabilities
 
-IPVM aims to not have an "IPVM token" or similar. Prenegotiated providers paid in fiat and metered in credits SHOULD be supported, as should a "spot market" of compute resources on an ad hoc basis. To maximize user choice, this system should be kept _out or on the fringes_ of the IPVM kernel as much as possible. IPVM MUST still allow for running compute yourself, or pushing compute to machines that you or a friendly agent controls "for free".
+* Wasm execution in depth
+* Spec format IPLD
+  * Input addressing
 
-* State channels
-  * ucan-chan (ユーキャンちゃん!)
-* Hierarchical consensus and/or Filecoin
+## 2.2 Implicit Parallelism
 
-## :rocket: Managed Effects
+IPVM does not allow programmer control over parallelism. The resources available to the scheulder MAY be very different from run to run.
 
-Effects are the things that happen outside of pure functions: sending email, retrying a failed execution, reading from a database, playing a bell, firing the missiles.
+The concurrency plan MUST be derived from the dataflow dependencies.
 
-Managed effects are handled by the compiler, VM, or runtime. The current hypothesis contains two levels of effect: pure ("platform") effects and impure effects. For completeness, you could say that pure functions are "non-effectful" and also exist on this spectrum of effectfulness.
 
-![](./assets/stream-effects.jpeg)
+# 3 Higher Abstractions
 
-Pure effects are ones that "merely" paper over pure functions with helpful abstractions (e.g. implicit state, error handling, continuations). Another way of thinking about them is that they stay "contained" in the system. We can roll back any of these operations, replay them, etc and aside from your CPU generating some extra heat, no one would be the wiser.
+At the lowest level, IPVM jobs only describe the loading of immutible data.
 
-Impure effects alter the world itself. If I send an email, I'm unable to reverse that action.
+* Actors
+* Vats
+* Map/reduce
 
-Pure effects are much more convenient to reason about, compose cleanly, and are inspectable. We want to capture as much of an impure effect as possible as pure descriptions. Returning "receipts" from an impure effect can turn a "request for effect" to a pure description of "...and it returned this specific result", which is a pure tuple. Treating it this way allows for idempotence on a stream of effects over time, capture and reuse of intermediate results, and so on.
+# 3 Acknowledgments
 
-Impure effects are very powerful, but with great power comes great responsibility... and also often fewer levers for performance optimization. One example is that impure effects often need exactly-once semantics, which requires gaining a global lock on the job (individual effects may be run in parallel, but need to be the only execution for that specific effect). This requires consensus, sometimes even global distributed consensus, which is always slower than being able to work from a distributed queue.
+* [Quinn Wilton](https://github.com/QuinnWilton), Fission
+* [Eric Myhre](https://github.com/warpfork), Protocol Labs
+* [Luke Marsden](https://github.com/lukemarsden), Protocol Labs
+* [David Aronchick](https://www.davidaronchick.com/), Protocol Labs
+* [Irakli Gozalishvili](https://github.com/Gozala), DAG House
+* [Hugo Dias](https://github.com/hugomrdias), DAG House
+* [Mikeal Rogers](https://github.com/mikeal/), DAG House
+* [Juan Benet](https://github.com/jbenet/), Protocol Labs
+* [Christine Lemmer-Webber](https://github.com/cwebber), Spiritely Institute
+* [Mark Miller](https://github.com/erights), Agoric
+* [Peter Alvaro](https://github.com/palvaro), UC Santa Cruz
+* [Joe Hellerstein](https://github.com/jhellerstein), UC Berkley
 
-In general, the number of hosts that can provide a particular effect are smaller than the hosts that can compute pure functions. There may simply be a tradeoff for the programmer to say "yes I really need this effect, even though I'll have fewer options".
+# 4 Prior Art
 
-### What About WASI?
+* [Docker Job Controller](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
+* BucketVM (UCAN Invocation)
+* [WarpForge "Formula" v1](https://github.com/warpfork/warpforge/blob/master/examples/110-formula-usage/example-formula-exec.md)
+* [Bacalhau Job Spec](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L192)
 
-We will almost certainly need to enable WASI at some stage. This is much more complex, as service discovery becomes a larger, and much more nuanced problem as arbitrary effects can be very difficult to make safe and deterministic. For example, what if the executable fills your disk with garbage?
 
-Should the core IPVM runtime provide "blessed" effects that operate over the shared memory interface? For example, I see no problem with providing a source of randomness as an external effect because it's useful, and probably safe. It "just" needs to come from "outside" the computation. These can even be captured in the trace.
-
-## :telescope: Sources of Inspiration
-
-We can learn a lot from adjacent projects. Some of these include:
-
-* WASI
-* FVM
-* Bacalhau
-* BucketVM
-* IPFS-FAN
-* Bloom^L
-* PACT/HydroLogic
-* Nix
-* Dialog
-
-## :world_map: Roadmap
-
-### A. Learning Phase
-
-1. Bash-script store/load/run Wasm from IPFS
-1. Memoization table 
-    * Local
-    * Remote, incl demo "look how fast it is on a remote machine now"
-1. Bash-script module pipelining, capturing intermediate results
-1. Experimentation with ABI (C conventions?)
-1. Pure effects (e.g. atomic FS or DB read/write)
-1. Initial attempt to run adaptive optimization on common partial applications
-
-### B. Specs
-
-* IPLI & session receipts
-* Scheduler & matchmaking
-* Memoized result format & lookup
-* Capability model
-    * Offline (SPKI)
-    * Online (ocap/CapTP)
-* Verification mechanisms
-* Compute on encrypted data (trusted & FHE)
-
-# FAQ
-
-## How Does This Differ From Autocodec and wasm-ipfs?
-
-Autocodec, IPVM, and wasm-ipfs all involve Wasm and IPFS. They are distinct projects, though sharing modules and learning between them is a nice-to-have. Having a Wasm interpreter in every IPFS node makes the argument for all of these projects much easier.
-
-wasm-ipfs is the replacement of IPFS internals with IPFS, to help share high-quality components across implementations and platforms.
-
-Autocodec is an attempt to replace in-built IPFS codecs with an ad hoc mechanism at read-time. The basic idea is "what if the codec executable was wrapped directly around the IPLD to interpret?"
-
-IPVM is a distributed execution engine, scheduler, service discovery layer / matchmaking, and memoization system. It is possibly the largest of the three projects. If wasm-ipfs is "IPFS _as_ Wasm", then IPVM is "Wasm _on_ IPFS"
-
-## Resources
-
-https://www.youtube.com/watch?v=rzJWk1nlYvs
+https://www.tweag.io/blog/2020-09-10-nix-cas/
