@@ -152,18 +152,19 @@ At the lowest level, IPVM jobs only describe the loading of immutible data.
 
 # 3 Acknowledgments
 
-* [Quinn Wilton](https://github.com/QuinnWilton), Fission
-* [Eric Myhre](https://github.com/warpfork), Protocol Labs
-* [Luke Marsden](https://github.com/lukemarsden), Protocol Labs
-* [David Aronchick](https://www.davidaronchick.com/), Protocol Labs
-* [Irakli Gozalishvili](https://github.com/Gozala), DAG House
-* [Hugo Dias](https://github.com/hugomrdias), DAG House
-* [Mikeal Rogers](https://github.com/mikeal/), DAG House
-* [Juan Benet](https://github.com/jbenet/), Protocol Labs
-* [Christine Lemmer-Webber](https://github.com/cwebber), Spiritely Institute
+* [Joe Armstrong](https://joearms.github.io/), Ericsson
 * [Mark Miller](https://github.com/erights), Agoric
 * [Peter Alvaro](https://github.com/palvaro), UC Santa Cruz
 * [Joe Hellerstein](https://github.com/jhellerstein), UC Berkley
+* [Juan Benet](https://github.com/jbenet/), Protocol Labs
+* [Christine Lemmer-Webber](https://github.com/cwebber), Spiritely Institute
+* [Quinn Wilton](https://github.com/QuinnWilton), Fission
+* [Luke Marsden](https://github.com/lukemarsden), Protocol Labs
+* [David Aronchick](https://www.davidaronchick.com/), Protocol Labs
+* [Eric Myhre](https://github.com/warpfork), Protocol Labs
+* [Irakli Gozalishvili](https://github.com/Gozala), DAG House
+* [Hugo Dias](https://github.com/hugomrdias), DAG House
+* [Mikeal Rogers](https://github.com/mikeal/), DAG House
 
 # 4 Prior Art
 
@@ -173,4 +174,17 @@ At the lowest level, IPVM jobs only describe the loading of immutible data.
 * [Bacalhau Job Spec](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L192)
 
 
+# FIXME STASH
+
 https://www.tweag.io/blog/2020-09-10-nix-cas/
+
+https://www.ams.org/journals/tran/1936-039-03/S0002-9947-1936-1501858-0/S0002-9947-1936-1501858-0.pdf
+
+* confluence
+* differential dataflow
+* map/reduce
+* actors & loops
+* captp/ocapn
+* Enqueuing new jobs in output
+IPVM implements a capability model based on keys, linked certificates, and CapTP. Executor certificate negotiation MUST happen during negotiation, 
+

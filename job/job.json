@@ -1,80 +1,67 @@
 {
-    "type": "ipvm/job",
-    "version": "0.0.1",
-    "requestor": "did:key:zAlice",
-    "nonce": "ABCDEF",
-    "config": {
-        "label": "fission/run_the_reports",
-        "start": "asap",
-        "timeoutAt": 1667878395,
-        "maxGas": 4096,
-        "authz": ["QmUcan1", "QmUcan2"], // TODO move to post-negotiated?
-        "visibility": "public",
-        "verification": {
-            "method": "ipvm/optimistic-zk",
-            "min": 1,
-            "replication": 2,
-            "referee": "ipns://abcdefghi"
-        }
+  "type": "ipvm/job",
+  "version": "0.1.0",
+  "requestor": "did:key:zAlice",
+  "nonce": "xjd72gs_k",
+  "ipvm/effects": {
+    "read-dns": {
+      "with": "dns://_dnslink.example.com?TYPE=TXT",
+      "do": "crud/read"
     },
-    "run": {
-        "wasm": "bafyWasm",
-        "args": [
-            { "w": "Qm123456" },
-            { "x": "Qmabcdef" },
-            { "y": { "with": "dnslink://example.com", "run": "dnslink/resolve" } }
-            { "z": "QmFooBar" },
-        ],
-        "affinities": [], // TODO lives here, or in
+    "check-dns": {
+      "with": "dns://_dnslink.example.com?TYPE=TXT",
+      "do": "crud/read",
+      "await": ["end"]
     },
-    "before": {
-        "database": {
-            "with": "dnslink://example.com",
-            "run": "dnslink/resolve"
-        }
+    "write-dns": {
+      "with": "dns://_dnslink.example.com?TYPE=TXT",
+      "do": "crud/update",
+      "inputs": [
+        { "value": { "from": "end" } },
+      ],
+      "await": ["cas"]
+    }
+  },
+  "ipvm/wasm": {
+    "left": {
+      "with": "QmLeftWasm",
+      "inputs": [
+        { "w": "Qm123456" },
+        { "x": "Qmabcdef" },
+        { "y": { "from": "effects/read-dns" } }
+        { "z": "QmFooBar" },
+      ],
+      "outputs": ["a", "b"] <!-- FIXME component model instead? -->
     },
-    "then": {
-        "effects": {
-            "bell": {
-                "run": "system/bell",
-                "on": "always"
-            }
-        },
-        "jobs": {
-            "left": {
-                "run": {
-                    "wasm": "bafyWasmLeft",
-                    "args": ["bafySomeArg"]
-                },
-                "then": {
-                    "jobs": {
-                        "subleft": {
-                            "run": {
-                                "wasm": "bafyWasmSubLeft",
-                                "args":
-                            }
-                        }
-                    }
-                }
-            },
-            "right": {
-                "run": "b"
-            },
-            "end": {
-                "run": {
-                    "wasm": "bafyWasmEnd",
-                    "input": {
-                        "foo": "jobs/left/subleft/"
-                }
-            }
-        }
+    "right": {
+      "with": "bafyRightWasm",
+      "inputs": [
+        { "foo": { "from": "effects/read-dns" } },
+        { "bar": "bafy123" }
+      ],
+      "outputs": ["a", "b"]
     },
-    "signature": "abcdef"
-}
-
-{
-    "type": "ipvm/deal",
-    "version": "0.0.1",
-    "accepter": "",
-    "job": "Qmabcdef"
+    "end": {
+      "with": "QmEndWasm",
+      "inputs": [
+        { "a": { "from": "left" } },
+        { "b": { "from": "right" } },
+        { "c": 123 }
+      ]
+    },
+    "cas": {
+      "with": "bafyCasWasm",
+      "inputs": [
+        { "initial": "effects/read-dns" },
+        { "latest": "effects/check-dns" }
+      ]
+    }
+  },
+  "ipvm/exception": {
+      "format-message": {
+        "type": "ipvm/wasm",
+        "with": "bafyHandlerWasm"
+      }
+  },
+  "signature": "abcdef"
 }
