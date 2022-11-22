@@ -15,7 +15,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 # 0 Abstract
 
-An IPVM Job defines the global configuration for a proposed job, their individual tasks, dependencies between tasks, any required authorization, authentication, and so on. An IPVM Jobs is an envelope for both the configuration and content layers common to job specifications.
+An IPVM Job defines the global configuration for a proposed job, their individual tasks, dependencies between tasks, any required authorization, authentication, and so on. An IPVM Jobs is an envelope for both the configuration and content layers common to declarative job specifications.
 
 # 1 Introduction
 
@@ -49,11 +49,7 @@ While effects MUST be declared up front, they MAY also be emitted as output from
 >
 > — Jerome Saltzer & M. Frans Kaashoek, Principles of Computer System Design
 
-While higher-level interfaces over IPVM Jobs MAY be used, ultimately configuration is the UI at this level of abstraction. The core use cases are moving jobs and tasks between machines, logging, and execution.
-
-IPVM Jobs aim to provide a computational model with a clear contract ("few if any surprises") for the programmer. 
-
-IPVM jobs follow the [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration) philosophy with defaults and cascading configuration.
+While higher-level interfaces over IPVM Jobs MAY be used, ultimately configuration is the UI at this level of abstraction. The core use cases are moving jobs and tasks between machines, logging, and execution. IPVM Jobs aim to provide a computational model with a clear contract ("few if any surprises") for the programmer, while limiting verbosity. IPVM jobs follow the [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration) philosophy with defaults and cascading configuration.
 
 ## 1.3 Security Considerations
 
@@ -73,22 +69,25 @@ Shared-nothing architecture. Even if shared memory is used, it MUST be controlle
 
 # 2 Envelope
 
-The outer wrapper of a job contains the information 
+The outer wrapper of a job MUST contain the following fields:
 
-FIXME add IPLD schema
+| Field          | Type                        | Description                               | Required | Default | 
+|----------------|-----------------------------|-------------------------------------------|----------|---------|
+| `type`         | `"ipvm/job"`                | Object type identifier                    | Yes      |         | 
+| `version`      | `"0.1.0"`                   | IPVM job version                          | Yes      |         | 
+| `requestor`    | DID                         | Requestor's DID                           | Yes      |         | 
+| `nonce`        | String                      | Unique nonce                              | Yes      |         | 
+| `verification` | `{"optimistic": 2} or null` |                                           | Yes      |         | 
+| `meta`         | `&Object`                   | User-defined object (tags, comments, etc) | No       | `{}`    | 
+| `parent`       | `CID-relative Path or null` | The CID of the initiating task (if any)   | No       | `null`  | 
+| `defaults`     | `IpvmConfig`                |                                           | No       | `{}`    | 
+| `tasks`        | `{String => Task}`          | Named tasks                               | Yes      |         | 
+| `exception`    | `Task.Wasm`                 |                                           | No       | `null`  | 
+| `signature`    | Varsig                      | Signature of serialized fields            | Yes      |         | 
 
-| Field       | Type                        | Description                             | Required | Default |
-|-------------|-----------------------------|-----------------------------------------|----------|---------|
-| `type`      | `"ipvm/job"`                | Object type identifier                  | Yes      |         |
-| `version`   | `"0.1.0"`                   | IPVM job version                        | Yes      |         |
-| `requestor` | DID                         | Requestor's DID                         | Yes      |         |
-| `nonce`     | String                      | Unique nonce                            | Yes      |         |
-| `parent`    | `CID-relative Path or null` | The CID of the initiating task (if any) | No       | `null`  |
-| `meta`      | Object                      |                                         | No       | `{}`    |
-| `config`    | `IpvmConfig`                |                                         | No       |         |
-| `run`       | `{String => Task}`          | Named tasks                             | Yes      |         |
-| `exception` | `Task.Wasm`                 |                                         |          |         |
-| `signature` | Varsig                      | Signature of serialized fields          | Yes      |         |
+``` ipldsch
+FIXME
+```
 
 ## 2.1 Fields
 
@@ -118,10 +117,12 @@ The OPTIONAL `parent` field contains the CID of the IPVM Task that initiated it 
 
 The `meta` field contains a user-definable JSON object. This is useful for including things like tags, comments, and so on.
 
-## 2.1.7 Global Configuration
+<!-- FIXME is this an attack vector? We should force this to be a CID I guess? -->
 
-The ___ FIXME
+## 2.1.7 Defaults
 
+The global `defaults` object (FIXME section X.Y) sets the configuration for the job itself, and defaults for tasks.
+ 
 ## 2.1.8 Run
 
 The `run` field contains all of the IPVM Tasks set to run in this Job, each labelled by a human-readable key.
@@ -138,7 +139,24 @@ The signature of the CID represented by the other fields.
 
 ## 2.2 Example
 
-Here is a nontrivial example of two tasks (`left` and `right`) used as input to a third task (`end`).
+Here is a nontrivial example of two tasks (`left` and `right`) used as input to a third task (`end`). Pictorally:
+
+```
+┌─────────┐   ┌─────────┐
+│         │   │         │
+│  left   │   │  right  │
+│         │   │         │
+└────────┬┘   └─┬───────┘
+         │      │
+         │      │
+       ┌─▼──────▼┐
+       │         │
+       │   end   │
+       │         │
+       └─────────┘
+```
+
+This is fully configured as:
 
 ``` json
 {
@@ -146,25 +164,27 @@ Here is a nontrivial example of two tasks (`left` and `right`) used as input to 
   "version": "0.1.0",
   "requestor": "did:key:zAlice",
   "nonce": "o3--8Gdu5",
+  "verification": {"optimistic": 2},
   "tasks": {
     "left": {
       "type": "ipvm/wasm",
-      "wasm/0.1.0": "bafyLeftWasm",
+      "version": "0.1.0",
+      "wasm": "bafkreiecadaahndb55cgvemhctwoojcc4hv4alogybpqndzj4mq7brixcy",
       "inputs": [],
-      "outputs": ["a", "b"] <!-- FIXME component model instead? -->
+      "outputs": ["foo", "bar"] <!-- FIXME component model instead? -->
     },
     "right": {
       "type": "ipvm/wasm",
-      "wasm/0.1.0": "QmRightWasm",
+      "wasm": "bafkreidrvex7kbqiow7gbqzvj452hr3vbifmfvyd55qicfwrw6xvq3qnlq",
       "inputs": [
-        { "bar": "bafy123" }
-      ],
-      "outputs": ["a", "b"] 
+        { "quux": "bafy123" }
+      ]
     },
     "end": {
-      "wasm": "QmEndWasm",
+      "type": "ipvm/wasm",
+      "wasm": "bafkreihvr3nup2lpny3ip3hkqv7s7ggq5wit5dkvyaexztnl54rkrlbdhe",
       "inputs": [
-        { "a": { "from": "left" } },
+        { "a": { "from": "left", "output": "bar" } },
         { "b": { "from": "right" } },
         { "c": 123 }
       ]
@@ -174,32 +194,45 @@ Here is a nontrivial example of two tasks (`left` and `right`) used as input to 
 }
 ```
 
-# 3 Tasks
+# 3 Global Defaults
+
+The global defaults object contains options for the Job itself, as well as cascading defaults for Tasks.
+
+| Field     | Type         | Description                  | Required | Default |
+|-----------|--------------|------------------------------|----------|---------|
+|           |              |                              |          |         |
+| `wasm`    | `CID or URI` | Reference to the Wasm to run | Yes      |         |
+| `effects` |              |                              |          |         |
+ 
+## 3.1 Global Wasm Configuration
+
+## 3.2 Global Effects Configuration
+
+# 4 Tasks
 
 While an indivdual invocation is structured like an AST (and eventually memoized as such), the tasks in a job spec MAY be unordered. Execution order MUST be determined by the scheduler and implied from the inputs.
 
 All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
 
-| Field    | Type                | Description                      | Required | Default |
-|----------|---------------------|----------------------------------|----------|---------|
-| `type`   | `string`            | The type of task (Wasm, etc)     | Yes      |         |
-| `with`   | `CID or URI`        | Reference to the Wasm to run     | Yes      |         |
-| `input`  | `[{String => CID}]` | Arguments to the Wasm executable | Yes      |         |
-| `auth`   | `UCAN[]`            |                                  | Yes      |         |
-| `secret` | `Boolean`           | <!-- or publish? -->             | No       | `True`  |
-| `meta`   | `Object`            |                                  | No       | `{}`    |
+| Field     | Type      | Description                  | Required | Default   |
+|-----------|-----------|------------------------------|----------|-----------|
+| `type`    | `string`  | The type of task (Wasm, etc) | Yes      |           |
+| `version` | SemVer    |                              | No       | `"0.1.0"` |
+| `auth`    | `&UCAN[]` |                              | No       | `[]`      |
+| `secret`  | `Boolean` | <!-- or publish? -->         | No       | `False`   |
+| `meta`    | `Object`  |                              | No       | `{}`      |
 
-## 3.1 Fields
+## 4.1 Fields
 
-### 3.1.1 `type`
+### 4.1.1 `type`
 
 The `type` field is used to declare the shape of the objet. This field MUST be either `ipvm/wasm` for pure Wasm, or `ipvm/effect` for effectful computation.
 
-### 3.1.2 `with` Resource
+### 4.1.2 `with` Resource
 
 The `with` field MUST contain a CID or URI of the resource to interact with. For example, this MAY be the Wasm to execute, or the URL of a web server to send a message to.
 
-### 3.1.3 `input`
+### 4.1.3 `args`
 
 FIXME define mapping to ABI / WIT
 
@@ -209,7 +242,51 @@ Values MUST be serialized as ______. If an input is given as an object, it MUST 
 
 For ex
 
-# 4 Pure Wasm
+## 4.2 Pipelining
+
+The output of one task is often the input to another. This is called pipelining, and MUST form one or more directed acyclic graphs (DAGs). Graphs MAY be unrooted.
+
+For example, this is a legal set of task graphs in a single job.
+
+```
+┌──────────────────Job Tasks──────────────────┐
+│                                             │
+│                                             │
+│  ┌─────────┐  ┌─────────┐      ┌─────────┐  │
+│  │         │  │         │      │         │  │
+│  │         │  │         │      │         │  │
+│  │         │  │         │      │         │  │
+│  └───────┬─┘  └─┬───────┘      └────┬────┘  │
+│          │      │                   │       │
+│          │      │                   │       │
+│        ┌─▼──────▼─┐            ┌────▼────┐  │
+│        │          │            │         │  │
+│        │          │            │         │  │
+│        │          │            │         │  │
+│        └─┬──────┬─┘            └─────────┘  │
+│          │      │                           │
+│          │      │                           │
+│  ┌───────▼─┐  ┌─▼───────┐                   │
+│  │         │  │         │                   │
+│  │         │  │         │                   │
+│  │         │  │         │                   │
+│  └─────────┘  └─────────┘                   │
+│                                             │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+Pipelining is acheived via dataflow. Every task is given a name, and its output(s) MUST be referenced by either the task's CID or its name inside the task map. If the task has more than one output, the output MUST be referenced by index (starting from 0) or name.
+
+```
+{"from": "previousTask"}
+{"from": "previousTask", "out": 3}
+{"from": "bafkreifovuswf6ss7czm5gk6ibnd7klhoojhynmiydj6cf7p2yjdsevlga", "out": "firstName" }
+```
+
+References by CID MAY be tasks that executed outside of the current job. If the task was not yet executed, it MUST NOT run inside this Job.
+
+# 5 Pure Wasm
 
 Treated as a black box, the deterministic subset of Wasm MUST be treated as a pure function, with no additional handlers or other capabilities directly availabel via WASI or similar.
 
@@ -220,22 +297,23 @@ The Wasm configuration MUST extend the core task type with the following fields:
 | Field     | Type                | Description                      | Required | Default                       |
 |-----------|---------------------|----------------------------------|----------|-------------------------------|
 | `type`    | `"ipvm/wasm"`       | Identify this task as Wasm 1.0   | Yes      |                               |
-| `version` | `1.0`               | The Wasm module's Wasm version   | Yes      |                               |
-| `with`    | CID                 | Reference to the Wasm to run     | Yes      |                               |
-| `input`   | `[{String => CID}]` | Arguments to the Wasm executable | Yes      |                               |
-| `maxgas`  | Integer             |                                  | No       | 1000 <!-- ...or something --> |
+| `version` | SemVer              | The Wasm module's Wasm version   | No       | `"0.1.0"`                     |
+| `run`     | CID                 | Reference to the Wasm to run     | Yes      |                               |
+| `args`    | `[{String => CID}]` | Arguments to the Wasm executable | Yes      |                               |
+| `secret`  | Boolean             |                                  | No       | `False`                       |
+| `maxgas`  | Integer             | Maximum gas for the invocation   | No       | 1000 <!-- ...or something --> |
 
-## 4.1 `type`
+## 5.1 `type`
 
 The `type` field declares this object to be an IPVM Wasm configuration. The value MUST be `ipvm/wasm`.
 
-## 4.2 `with`
+## 5.2 `with`
 
 The `with` field declares the Wasm module to load via CID.
 
 Note that the 
 
-## 4.3 `input`
+## 5.3 `input`
 
 ## 4.4 `maxgas`
 
@@ -243,34 +321,39 @@ The `maxgas` field specifies the upper limit in gas that this task may consume.
 
 For the gas schedule, please see the [gas schedule spec].
 
-# 5 Effects
+# 6 Effects
 
-The contract for effects is different from pure computation. As effects by definition interact with the "real world", 
+The contract for effects is different from pure computation. As effects by definition interact with the "real world". These may be either commands or queries. Exmaples of effects include reading from DNS, sending an HTTP POST request, running a WASI module with network access, or receieving a random value.
 
 The `with` field MAY be filled from a relative value (previous step)
 
-| Field     | Type            | Description                    | Required    | Default |
-|-----------|-----------------|--------------------------------|-------------|---------|
-| `type`    | `"ipvm/effect"` | Identify this job as an effect | Yes         |         |
-| `with`    | URI             |                                | Yes         |         |
-| `do`      | `"crypto/sign"` |                                | Yes         |         |
-| `value`   | String          |                                | On mutation |         |
-| `timeout` | Integer         | Timeout in milliseconds        | No          | 1000    |
+| Field         | Type            | Description                           | Required | Default |
+|---------------|-----------------|---------------------------------------|----------|---------|
+| `type`        | `"ipvm/effect"` | Identify this job as an effect        | Yes      |         |
+| `version`     | SemVer          | IPVM effect schema version            | No       | `0.1.0` |
+| `to`          | URI             |                                       | Yes      |         |
+| `do`          | ability         |                                       | Yes      |         |
+| `args`        | `[{}]`          |                                       | No       | `[]`    |
+| `timeout`     | Integer         | Timeout in milliseconds               | No       | `5000`  |
+| `auth`        | `[&UCAN]`       |                                       | No       | `[]`    |
+
+<!-- | `destructive` | Boolean         |  FIXME infer from `do` field?  | No       | `True`  | -->
+<!-- indeed these need to be registered by the runner -->
 
 ``` json
 {
     "type": "ipvm/effect",
-    "with": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4",
+    "to": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4",
     "do": "crypto/sign",
-    "inputs": [
+    "args": [
         { "value": { "from": "earlierStep" } }
     ]
 }
 ```
 
-## 5.1 `type`
+## 6.1 `type`
 
-# 6 Exception Handler
+# 7 Exception Handler
 
 Note that while IPVM MUST treat the pure tasks together as transactional, it is not possible to roll back any destructive effects that have been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect.
 
@@ -280,15 +363,22 @@ Each task MAY include a failure job to run on failure.
 
 Note that effectful exception handlers that emit effects (such as network access) MAY fail for the same reason as the job that caused the exception to be thrown. Running a pure value is RECOMMENDED.
 
-# 7 Related Work and Prior Art
+# 8 Related Work and Prior Art
 
 AWS Lambda job specs
-
-E Language, CapNet
+OCI
+E Language
+CapNet
+Project Naiad
+Bloom
+PACT/HydroLogic
+BucketVM
+Bacalhau
+AquaVM
 
 It is not possible to mention the separation of effects from computation without mentioning the algebraic effect lineage from Haskell, OCaml, and Eff. While the overall system looks quite different from the their type-level effects, this work owes a debt to at least Gordon Plotkin and John Power's work on [computational effects](https://homepages.inf.ed.ac.uk/gdp/publications/Overview.pdf), 
 
-# 8 Acknowledgments
+# 9 Acknowledgments
 
 * Steb
 * Mel

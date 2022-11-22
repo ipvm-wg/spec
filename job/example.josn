@@ -25,9 +25,9 @@ Here is an example of a nontrivial IPVM job which reads from DNS, performs sever
     },
     "write-dns": {
       "type": "ipvm/effect",
-      "with": "dns://_dnslink.example.com?TYPE=TXT",
       "do": "crud/update",
-      "inputs": [
+      "to": "dns://_dnslink.example.com?TYPE=TXT",
+      "args": [
         { "value": { "from": "end" } }
         { "_":     { "from": "cas" } }
       ],
