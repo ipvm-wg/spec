@@ -87,6 +87,28 @@ The outer wrapper of a job MUST contain the following fields:
 
 ``` ipldsch
 FIXME
+
+type Job struct {
+  ver String
+  req DID
+  nnc String 
+  vfy Verification 
+  meta &{String:String} implicit {}
+  par &Task optional nullable
+  dfl Config implicit {}
+  tsks {String: Task}
+  exc &Wasm optional nullable
+  sig
+}
+
+type Verification union {
+  | OptimisticVerification
+  | "snark"
+} representation keyed
+
+type OptimisticVerification struct {
+  optimistic Integer
+}
 ```
 
 ## 2.1 Fields
