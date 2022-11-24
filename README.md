@@ -16,9 +16,30 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 # Subspecs 
 
-* [Workflow](./workflow/README.md)
-* [Task](./task/README.md)
-* [Effect](./effect/README.md)
+* Invocation
+  * [Workflow](./workflow/README.md)
+  * [Task](./task/README.md)
+  * [Effect](./effect/README.md)
+* Runtime
+  * Scheduler
+  * Execution
+* Lifecycle
+  * Request
+  * Negotiation
+  * Capabilties
+    * SPKI
+    * OCapN
+  * Verification
+  * Payment Channels
+* Wasm μKernel
+  * IPFS
+  * Atomics and STM
+  * Actors
+* First-Class Effects
+  * Randomness
+  * HTTP
+  * FVM
+  * Bacalhau
 
 # 0 Abstract
 
