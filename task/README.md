@@ -36,43 +36,43 @@ One way to represent the difference between these pictorally is with box-and-wir
 
 ```
  Safe
-  │              ┌─                               ─┐
-  │              │         ┌─────────────┐         │
-  │              │         │             │         │
-  │              │         │             │         │
-  │         Pure │   ──────►             ├────►    │
-  │              │         │             │         │
-  │              │         │             │         │
-  │              │         └─────────────┘         │
-  │              └─                                │
-  │                                                │
-  │                                                │
-  │                                                │ Nondestructive
-  │                                                │
-  │                                                │
-  │              ┌─                                │
-  │              │     │   ┌─────────────┐         │
-  │              │     └───►             │         │
-  │              │         │             │         │
-  │              │   ──────►             ├────►    │
-  │              │         │             │         │
-  │              │         │             │         │
-  │              │         └─────────────┘         │
-  │              │                                ─┘
+  │              ┌─                                         ─┐
+  │              │              ┌─────────────┐              │
+  │              │              │             │              │
+  │              │              │             │              │
+  │         Pure │        ──────►             ├────►         │
+  │              │              │             │              │
+  │              │              │             │              │
+  │              │              └─────────────┘              │
+  │              └─                                          │
+  │                                                          │
+  │                                                          │
+  │                                                          │ Nondestructive
+  │                                                          │
+  │                                                          │
+  │              ┌─                                          │
+  │              │          │   ┌─────────────┐              │
+  │              │          └───►             │              │
+  │              │              │             │              │
+  │              │        ──────►             ├────►         │
+  │              │              │             │              │
+  │              │              │             │              │
+  │              │              └─────────────┘              │
+  │              │                                          ─┘
   │              │
   │              │
   │    Effectful │
   │              │
   │              │
-  │              │                          ▲     ─┐
-  │              │         ┌─────────────┐  │      │
-  │              │         │             ├──┘      │
-  │              │         │             │         │
-  │              │   ──────►             ├────►    │ Destructive
-  │              │         │             │         │
-  │              │         │             │         │
-  │              │         └─────────────┘         │
-  ▼              └─                               ─┘
+  │              │                               ▲          ─┐
+  │              │              ┌─────────────┐  │           │
+  │              │              │             ├──┘           │
+  │              │              │             │              │
+  │              │        ──────►             ├────►         │ Destructive
+  │              │              │             │              │
+  │              │              │             │              │
+  │              │              └─────────────┘              │
+  ▼              └─                                         ─┘
 Unsafe
 ```
 
@@ -92,16 +92,15 @@ Destructive effects are the opposite: they "update the world". Sending an text m
 
 # 2 Envelope
 
-
 All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
 
-| Field     | Type      | Description                  | Required | Default   |
-|-----------|-----------|------------------------------|----------|-----------|
-| `type`    | `string`  | The type of task (Wasm, etc) | Yes      |           |
-| `version` | SemVer    |                              | No       | `"0.1.0"` |
-| `auth`    | `&UCAN[]` |                              | No       | `[]`      |
-| `secret`  | `Boolean` | <!-- or publish? -->         | No       | `False`   |
-| `meta`    | `Object`  |                              | No       | `{}`      |
+| Field     | Type              | Description                  | Required | Default   |
+|-----------|-------------------|------------------------------|----------|-----------|
+| `type`    | `string`          | The type of task (Wasm, etc) | Yes      |           |
+| `version` | SemVer            |                              | No       | `"0.1.0"` |
+| `auth`    | `&UCAN[]`         |                              | No       | `[]`      |
+| `secret`  | `Boolean or null` | <!-- or publish? -->         | No       | `null`    |
+| `meta`    | `Object`          |                              | No       | `{}`      |
 
 ## 2.1 Fields
 
@@ -123,25 +122,31 @@ Values MUST be serialized as ______. If an input is given as an object, it MUST 
 
 For ex
 
+### 2.1.4 `secret`
 
+The `secret` flag marks a task as being unsuitable for publication.
 
+If the `sceret` field is explicitely set, the task MUST be treated per that setting. If not set, the `secret` field defaults to `null`, which behaves as a soft `false`. If such a task consumes input from a `secret` source, it is also marked as `secret`.
+
+Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider using [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
 
 # 3 Pure Wasm
 
-Treated as a black box, the deterministic subset of Wasm MUST be treated as a pure function, with no additional handlers or other capabilities directly availabel via WASI or similar.
+Treated as a black box, the deterministic subset of Wasm MUST be treated as a pure function, with no additional handlers or other capabilities directly available via WASI or similar aside from the ability to read content addressed data.
 
-Since 
- 
-The Wasm configuration MUST extend the core task type with the following fields:
+Note that while the function itself is pure, as is dereferencing content-addressed data, the function MAY fail if the CID is not available to the runner.
 
-| Field     | Type                | Description                      | Required | Default                       |
-|-----------|---------------------|----------------------------------|----------|-------------------------------|
-| `type`    | `"ipvm/wasm"`       | Identify this task as Wasm 1.0   | Yes      |                               |
-| `version` | SemVer              | The Wasm module's Wasm version   | No       | `"0.1.0"`                     |
-| `run`     | CID                 | Reference to the Wasm to run     | Yes      |                               |
-| `args`    | `[{String => CID}]` | Arguments to the Wasm executable | Yes      |                               |
-| `secret`  | Boolean             |                                  | No       | `False`                       |
-| `maxgas`  | Integer             | Maximum gas for the invocation   | No       | 1000 <!-- ...or something --> |
+The Wasm configuration MUST extend the core task type as follows:
+
+| Field     | Type                  | Description                               | Required | Default                       |
+|-----------|-----------------------|-------------------------------------------|----------|-------------------------------|
+| `type`    | `"ipvm/wasm"`         | Identify this task as Wasm 1.0            | Yes      |                               |
+| `version` | SemVer                | The Wasm module's Wasm version            | No       | `"0.1.0"`                     |
+| `mod`     | CID                   | Reference to the Wasm module to run       | Yes      |                               |
+| `fun`     | `String or OutputRef` | The function to invoke on the Wasm module | Yes      |                               |
+| `args`    | `[{String => CID}]`   | Arguments to the Wasm executable          | Yes      |                               |
+| `secret`  | Boolean               |                                           | No       | `False`                       |
+| `maxgas`  | Integer               | Maximum gas for the invocation            | No       | 1000 <!-- ...or something --> |
 
 ## 3.1 `type`
 
@@ -192,3 +197,8 @@ The `with` field MAY be filled from a relative value (previous step)
 ```
 
 ## 4.1 `type`
+
+
+# 5 Prior Art
+
+# 6 Acknowledgments
