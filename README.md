@@ -14,6 +14,12 @@
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
+# Subspecs 
+
+* [Workflow](./workflow/README.md)
+* [Task](./task/README.md)
+* [Effect](./effect/README.md)
+
 # 0 Abstract
 
 IPVM
