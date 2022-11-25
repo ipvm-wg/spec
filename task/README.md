@@ -199,6 +199,45 @@ The `with` field MAY be filled from a relative value (previous step)
 ## 4.1 `type`
 
 
+``` json
+{
+  "type": "ipvm/task",
+  "version": "0.1.0",
+  "using": "wasm:Qm12345"
+  "args": {
+    "fun": "add_one",
+    "args": [1, 2, 3],
+    "maxgas": 1024
+  }
+}
+```
+
+``` json
+{
+  "type": "ipvm/task",
+  "version": "0.1.0",
+  "using": "docker:Qm12345"
+  "meta": {
+    "annotations": []
+  },
+  "args": {
+    "resources": {
+      "ram": {"gb": 10}
+    },
+    "inputs": [1, 2, 3],
+    "entry": "/",
+    "workdir": "/",
+    "env": {
+      "$FOO": "bar"
+    },
+    "timeout": {"seconds": "3600"},
+    "contexts": [],
+    "output": [],
+    "sharding": 5
+  }
+}
+```
+
 # 5 Prior Art
 
 # 6 Acknowledgments
