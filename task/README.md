@@ -7,7 +7,8 @@
 ## Authors
 
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
-* [Simon Worthington](https://github.com/simonwo), [Bacalhau Project](https://www.bacalhau.org/) _(TODO: Provisionally!)_
+* [Simon Worthington](https://github.com/simonwo), [Bacalhau Project](https://www.bacalhau.org/)
+* [Luke Marsden](https://github.com/lukemarsden), [Bacalhau Project](https://www.bacalhau.org/)
 
 ## Language
 
@@ -15,7 +16,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 # 0 Abstract
 
-Tasks are the smallest unit of work in an IPVM workflow. Each Task is restricted to a single type, such as Wasm or effects like an HTTP `GET` request. 
+Tasks are the smallest unit of work in an IPVM workflow. Each Task is restricted to a single type, such as a Wasm module, or effects like an HTTP `GET` request. 
 
 # 1 Introduction
 
@@ -28,7 +29,7 @@ Tasks can be broken into categories:
     * Destructive
     * Nondestructive 
 
-Where a pure function takes inputs to outputs, deterministically, without producing any other change to the world (aside from turning energy into heat).
+Where a pure function takes inputs to outputs, deterministically, without producing any other change to the world (aside from [heat](https://en.wikipedia.org/wiki/Second_law_of_thermodynamics)).
 
 Effects interact with the world in some way . Reading from a database, sending an email, and firing missiles are all kinds of effect.
 
@@ -36,49 +37,51 @@ One way to represent the difference between these pictorally is with box-and-wir
 
 ```
  Safe
-  │              ┌─                                         ─┐
-  │              │              ┌─────────────┐              │
-  │              │              │             │              │
-  │              │              │             │              │
-  │         Pure │        ──────►             ├────►         │
-  │              │              │             │              │
-  │              │              │             │              │
-  │              │              └─────────────┘              │
-  │              └─                                          │
-  │                                                          │
-  │                                                          │
-  │                                                          │ Nondestructive
-  │                                                          │
-  │                                                          │
-  │              ┌─                                          │
-  │              │          │   ┌─────────────┐              │
-  │              │          └───►             │              │
-  │              │              │             │              │
-  │              │        ──────►             ├────►         │
-  │              │              │             │              │
-  │              │              │             │              │
-  │              │              └─────────────┘              │
-  │              │                                          ─┘
-  │              │
-  │              │
-  │    Effectful │
-  │              │
-  │              │
-  │              │                               ▲          ─┐
-  │              │              ┌─────────────┐  │           │
-  │              │              │             ├──┘           │
-  │              │              │             │              │
-  │              │        ──────►             ├────►         │ Destructive
-  │              │              │             │              │
-  │              │              │             │              │
-  │              │              └─────────────┘              │
-  ▼              └─                                         ─┘
+  │                        ┌─                              ─┐
+  │                        │         ┌─────────────┐        │
+  │                        │         │             │        │
+  │                        │         │             │        │
+  │                   Pure │   ──────►             ├────►   │
+  │                        │         │             │        │
+  │                        │         │             │        │
+  │                        │         └─────────────┘        │
+  │                        └─                               │
+  │                                                         │
+  │                                                         │
+  │                                                         │ Nondestructive
+  │                                                         │
+  │                                                         │
+  │             ┌─         ┌─                               │
+  │             │          │     │   ┌─────────────┐        │
+  │             │          │     └───►             │        │
+  │             │          │         │             │        │
+  │             │    Query │   ──────►             ├────►   │
+  │             │          │         │             │        │
+  │             │          │         │             │        │
+  │             │          │         └─────────────┘        │
+  │             │          └─                              ─┘
+  │             │
+  │             │
+  │   Effectful │
+  │             │
+  │             │
+  │             │          ┌─                         ▲    ─┐
+  │             │          │         ┌─────────────┐  │     │
+  │             │          │         │             ├──┘     │
+  │             │          │         │             │        │
+  │             │  Command │   ──────►             ├────►   │ Destructive
+  │             │          │         │             │        │
+  │             │          │         │             │        │
+  │             │          │         └─────────────┘        │
+  ▼             └─         └─                              ─┘
 Unsafe
 ```
 
 ## 1.1 Pure Functions
 
 Pure functions are very safe and simple. They can be retried safely, and their output is directly verifiable against other executions. Once a pure function has been accepted, it can be cached with an infinite TTL. The output of a pure function is fully equivalent to the invocation of the function and its arguments.
+
+Note that in IPVM, pre-resolved CID handles are treated as referentially transparent. See [CID Handles](FIXME).
 
 ## 1.2 Nondestructive Effects
 
@@ -89,6 +92,29 @@ Nondestructive effects can be retried or raced safely. Each nondestructive invoc
 ## 1.3 Destructive Effects
 
 Destructive effects are the opposite: they "update the world". Sending an text message cannot be retried without someone noticing a second text message. Destructive effects require careful handling, with attestation from the executor. Ensuring exact-once execution of destructive effects requires consensus on the execution schedule of the one task, which often incurs a performance penalty over other forms of task.
+
+# 2 Content Handles
+
+[Content Identifiers](https://docs.ipfs.tech/concepts/content-addressing/) (CIDs) are integral to IPFS. They map a hash to its preimage, which is a stable identifier for it across all machines, liberating it from location. This however does not guarintee that 
+
+This  that the CID has been checked, and the runner guarintees that it is available in the current environment.
+
+A Content Handle (CHa) is a type that MUST only be created by the runtime. This special handling provides a [lightweight proof](https://kataskeue.com/gdp.pdf) that the content is reachable to downstream tasks, allowing the scheduler to treat it as a pure value.  A failure to dereference content from a CHa is a failure of the runner, not the requestor. By analogy to HTTP, failing to resolve a CHa is a 500, passing a malformed CID is a 400, and the effect converting a CID to a CHa timing out is a 408.
+
+``` js
+// Just a sketch for now, don't judge me!
+{
+  "type": "ipvm/effect",
+  "version": "0.1.0",
+  "using": "cid:Qm12345",
+  "do": "handle/resolve"
+}
+```
+
+```haskell
+-- No, this won't survive into the fnal draft. Just stashing it here for now as a note!
+resolve :: CID -> IO (Either Timeout CHa)
+```
 
 # 2 Envelope
 
@@ -201,10 +227,12 @@ The `with` field MAY be filled from a relative value (previous step)
 
 ``` json
 {
-  "type": "ipvm/task",
+  "type": "ipvm/pure",
   "version": "0.1.0",
   "using": "wasm:Qm12345"
   "args": {
+    "type": "ipvm/wasm",
+    "version": "0.1.0",
     "fun": "add_one",
     "args": [1, 2, 3],
     "maxgas": 1024
@@ -214,13 +242,14 @@ The `with` field MAY be filled from a relative value (previous step)
 
 ``` json
 {
-  "type": "ipvm/task",
+  "type": "ipvm/effect",
   "version": "0.1.0",
   "using": "docker:Qm12345"
   "meta": {
-    "annotations": []
+    "description": "Tensorflow container",
+    "tags": ["machine-learning", "tensorflow", "myproject"]
   },
-  "args": {
+  "do": {
     "resources": {
       "ram": {"gb": 10}
     },

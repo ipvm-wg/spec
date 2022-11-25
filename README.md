@@ -54,6 +54,10 @@ An IPVM "job" is a declarative description of WebAssembly and managed effects to
 
 IPVM provides a deterministic-by-default, content addressed execution environment. Execution may always be run locally, but there are many cases where remote exection is desirable: access to large data, faster processors, trusted execution environments, or access to specialized hardware, among others.
 
+> Because he was talking (mainly) to a set of platform folks he admonished us to think about how we can build platforms that lead developers to write great, high performance code such that developers just fall into doing the “right thing”. Rico called this the Pit of Success.
+>
+>  — Brad Abrams, [The Pit of Success](https://learn.microsoft.com/en-us/archive/blogs/brada/the-pit-of-success)
+
 ## 1.1 Minimizing Complexity
 
 > Every application has an inherent amount of irreducible complexity. The only question is: Who will have to deal with it — the user, the application developer, or the platform developer?
