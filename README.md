@@ -20,7 +20,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
   * [Workflow](./workflow/README.md)
   * [Task](./task/README.md)
   * [Effect](./effect/README.md)
-  * Invocation
+  * [Invocation](./invocation/README.md)
   * Receipt
 * Runtime
   * Distributed Scheduler

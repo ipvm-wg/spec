@@ -1,5 +1,9 @@
 # IPVM Task Specification v0.1.0
 
+> With hands of iron, there's not a task we couldn't do
+>
+> The Good Doctor, [The Protomen](https://en.wikipedia.org/wiki/The_Protomen)
+
 ## Editors
 
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
@@ -8,7 +12,6 @@
 
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
 * [Simon Worthington](https://github.com/simonwo), [Bacalhau Project](https://www.bacalhau.org/)
-* [Luke Marsden](https://github.com/lukemarsden), [Bacalhau Project](https://www.bacalhau.org/)
 
 ## Language
 
@@ -16,11 +19,11 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 # 0 Abstract
 
-Tasks are the smallest unit of work in an IPVM workflow. Each Task is restricted to a single type, such as a Wasm module, or effects like an HTTP `GET` request. 
+Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is restricted to a single type, such as a Wasm module, or effects like an HTTP `GET` request.
 
 # 1 Introduction
 
-Tasks describe everything required to execute the job. While all Tasks share some things in common, the details MAY be quite different.
+Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
 
 Tasks can be broken into categories:
 
@@ -37,15 +40,15 @@ One way to represent the difference between these pictorally is with box-and-wir
 
 ```
  Safe
-  │                        ┌─                              ─┐
-  │                        │         ┌─────────────┐        │
-  │                        │         │             │        │
-  │                        │         │             │        │
-  │                   Pure │   ──────►             ├────►   │
-  │                        │         │             │        │
-  │                        │         │             │        │
-  │                        │         └─────────────┘        │
-  │                        └─                               │
+  ▲             ┌─                                         ─┐
+  │             │                    ┌─────────────┐        │
+  │             │                    │             │        │
+  │             │                    │             │        │
+  │        Pure │              ──────►             ├────►   │
+  │             │                    │             │        │
+  │             │                    │             │        │
+  │             │                    └─────────────┘        │
+  │             └─                                          │
   │                                                         │
   │                                                         │
   │                                                         │ Nondestructive
@@ -95,11 +98,17 @@ Destructive effects are the opposite: they "update the world". Sending an text m
 
 # 2 Content Handles
 
-[Content Identifiers](https://docs.ipfs.tech/concepts/content-addressing/) (CIDs) are integral to IPFS. They map a hash to its preimage, which is a stable identifier for it across all machines, liberating it from location. This however does not guarintee that 
+[Content Identifiers](https://docs.ipfs.tech/concepts/content-addressing/) (CIDs) are integral to IPFS. They map a hash to its preimage, which is a stable identifier for it across all machines, liberating it from location. However, this does not guarantee that the CID is resolvable at a particular time or place.
+
+A Content Handle (CHa) is a type that MUST only be created by the runtime and MUST NOT have a serializated representation. This special handling provides a [lightweight proof](https://kataskeue.com/gdp.pdf) that the content is reachable to downstream tasks, allowing the scheduler to treat it as a pure value. A failure to dereference content from a CHa is a failure of the runner, not the requestor. By analogy to HTTP, failing to resolve a CHa is a 500, passing a malformed CID is a 400, and the effect converting a CID to a CHa timing out is a 408.
 
 This  that the CID has been checked, and the runner guarintees that it is available in the current environment.
 
-A Content Handle (CHa) is a type that MUST only be created by the runtime. This special handling provides a [lightweight proof](https://kataskeue.com/gdp.pdf) that the content is reachable to downstream tasks, allowing the scheduler to treat it as a pure value.  A failure to dereference content from a CHa is a failure of the runner, not the requestor. By analogy to HTTP, failing to resolve a CHa is a 500, passing a malformed CID is a 400, and the effect converting a CID to a CHa timing out is a 408.
+| Issue                         | At Fault               |
+|-------------------------------|------------------------|
+| Malformed CID                 | Requestor              |
+| Cannot provide all CHa blocks | Runner                 |
+| Cannot resolve CID to CHa     | Network or Environment |
 
 ``` js
 // Just a sketch for now, don't judge me!
@@ -124,9 +133,14 @@ All tasks MUST contain at least the following fields. They MAY contain others, d
 |-----------|-------------------|------------------------------|----------|-----------|
 | `type`    | `string`          | The type of task (Wasm, etc) | Yes      |           |
 | `version` | SemVer            |                              | No       | `"0.1.0"` |
-| `auth`    | `&UCAN[]`         |                              | No       | `[]`      |
 | `secret`  | `Boolean or null` | <!-- or publish? -->         | No       | `null`    |
 | `meta`    | `Object`          |                              | No       | `{}`      |
+
+<!-- | `auth`    | `&UCAN[]`         |                              | No       | `[]`      | -->
+
+<!-- 
+Why no auth at this layer? Really simple: you don't know who you're delegating to yet!
+-->
 
 ## 2.1 Fields
 
@@ -225,7 +239,7 @@ The `with` field MAY be filled from a relative value (previous step)
 ## 4.1 `type`
 
 
-``` json
+ ``` json
 {
   "type": "ipvm/pure",
   "version": "0.1.0",
@@ -249,6 +263,7 @@ The `with` field MAY be filled from a relative value (previous step)
     "description": "Tensorflow container",
     "tags": ["machine-learning", "tensorflow", "myproject"]
   },
+  "after": ["previousStep", "QmXYZ"] // Contraint on effect ordering, as opposed to using the inputs directly
   "do": {
     "resources": {
       "ram": {"gb": 10}
