@@ -1,5 +1,9 @@
 # IPVM Workflow Specification v0.1.0
 
+> In late 1970 or early ’71 I approached IBM Canada’s Intellectual Property department to see if we could take out a patent on the basic idea [of dataflow]. Their recommendation, which I feel was prescient, was that this concept seemed to them more like a law of nature, which is not patentable. 
+>
+> J. Paul Morrison, [Flow-Based Programming](https://jpaulm.github.io/fbp/book.html)
+
 ## Editors
 
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)

@@ -8,7 +8,7 @@
 
 * [Blaine Cook](https://github.com/blaine), [Fission](https://fission.codes)
 * [Zeeshan Lakhani](https://github.com/zeeshanlakhani), [Fission](https://fission.codes)
-* [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
+* [ ] [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
     
 ## Language
 

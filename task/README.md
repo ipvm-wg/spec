@@ -285,3 +285,6 @@ The `with` field MAY be filled from a relative value (previous step)
 # 5 Prior Art
 
 # 6 Acknowledgments
+
+
+NOTE TO SELFL inputs as "ports"

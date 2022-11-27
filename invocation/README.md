@@ -87,3 +87,16 @@ Expanded:
 }
 ```
 
+but in actuality, this will look like:
+
+``` json
+{
+  "ucan/invoke": [
+    {"ucan": "bafyRight"}, 
+    {"ucan": "bafyLeft"},
+    {"ucan": "bafyEnd", "after": ["bafyLeft", "bafyRight"]}
+  ]
+  "siganture": 0xCOFFEE
+}
+```
+
