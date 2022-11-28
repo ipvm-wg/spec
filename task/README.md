@@ -158,6 +158,9 @@ All tasks MUST contain at least the following fields. They MAY contain others, d
 | `v`      | SemVer            | IPVM Task Version                       | Yes      |                 |
 | `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`          |
 | `check`  | `Verification`    | How to verify the output                | No       | `"attestation"` |
+| `time`   | Integer           | Timeout in milliseconds                 | No       | `5000`          |
+| `memory` | Integer           | Memory limit in KB                      | No       | 1000            |
+| `disk`   | Integer           | Disk limit in KB                        | No       | 100000          |
 
 ## 2.1 Fields
 
@@ -250,7 +253,7 @@ The Wasm configuration MUST extend the core task type as follows:
 |--------|-----------------------|-------------------------------------------|----------|---------|
 | `v`    | SemVer                | The Wasm module's Wasm version            | No       | `0.1.0` |
 | `func` | `String or OutputRef` | The function to invoke on the Wasm module | Yes      |         |
-| `args` | `[{String => CID}]`   | Arguments to the Wasm executable          | Yes      |         |
+| `args` | `[{String : Any}]`    | Arguments to the Wasm executable          | Yes      |         |
   
 ## 3.2 IPLDS Schema
 
@@ -262,7 +265,9 @@ type WasmTask struct {
 }
 ```
 
-## 3.3 JSON Example
+## 3.3 JSON Examples
+
+Deterministic WebAssembly
 
 ``` js
 {
@@ -277,13 +282,13 @@ type WasmTask struct {
   },
   "some-wasm": {
     "using": "wasm:1:Qm12345", // Or something... wasm:Qm12345?
-    "do": "wasm/run",
+    "do": "ipvm/run",
     "inputs": {
       "func": "calculate",
       "args": [
         1,
         "hello world",
-        {"ucan/promise": ["/", "some-other-action" /* ... */]},
+        {"c": {"ucan/promise": ["/", "some-other-action"]}},
         {"a": 1, "b": 2, "c": 3}
       ]
     },
@@ -296,73 +301,32 @@ type WasmTask struct {
 }
 ```
 
-# 4 Effects
-
-The contract for effects is different from pure computation. As effects by definition interact with the "real world". These may be either commands or queries. Exmaples of effects include reading from DNS, sending an HTTP POST request, running a WASI module with network access, or receieving a random value.
-
-The `with` field MAY be filled from a relative value (previous step)
-
-| Field     | Type      | Description                | Required | Default |
-|-----------|-----------|----------------------------|----------|---------|
-| `v`       | SemVer    | IPVM effect schema version | No       | `0.1.0` |
-| `args`    | `[{}]`    |                            | No       | `[]`    |
-| `timeout` | Integer   | Timeout in milliseconds    | No       | `5000`  |
-
-<!-- | `destructive` | Boolean         |  FIXME infer from `do` field?  | No       | `True`  | -->
-<!-- indeed these need to be registered by the runner -->
+Docker
 
 ``` json
 {
-    "type": "ipvm/effect",
-    "to": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4",
-    "do": "crypto/sign",
+  "using": "docker:1:Qm12345", // Or something... wasm:Qm12345?
+  "do": "docker/run",
+  "inputs": {
+    "func": "calculate",
     "args": [
-        { "value": { "from": "earlierStep" } }
-    ]
-}
-```
-
-## 4.1 `type`
-
-
- ``` json
-{
-  "using": "wasm:Qm12345"
-  "do": "ipvm/call",
-  "args": {
-    "type": "ipvm/wasm",
-    "version": "0.1.0",
-    "fun": "add_one",
-    "args": [1, 2, 3],
-    "maxgas": 1024
-  }
-}
-```
-
-``` json
-{
-  "type": "ipvm/effect",
-  "version": "0.1.0",
-  "using": "docker:Qm12345"
-  "meta": {
-    "description": "Tensorflow container",
-    "tags": ["machine-learning", "tensorflow", "myproject"]
-  },
-  "after": ["previousStep", "QmXYZ"] // Contraint on effect ordering, as opposed to using the inputs directly
-  "do": {
-    "resources": {
-      "ram": {"gb": 10}
+      1,
+      "hello world",
+      {"c": {"ucan/promise": ["/", "some-other-action"]}},
+      {"a": 1, "b": 2, "c": 3}
+    ],
+    "container": {
+      "entry": "/",
+      "workdir": "/",
     },
-    "inputs": [1, 2, 3],
-    "entry": "/",
-    "workdir": "/",
     "env": {
       "$FOO": "bar"
-    },
-    "timeout": {"seconds": "3600"},
-    "contexts": [],
-    "output": [],
-    "sharding": 5
+    }
+  },
+  "ipvm/config": {
+    "v": "0.1.0",
+    "secret": false,
+    "check": {"optimistic": 2}
   }
 }
 ```
@@ -376,5 +340,3 @@ The `with` field MAY be filled from a relative value (previous step)
 
 # 6 Acknowledgments
 
-
-NOTE TO SELFL inputs as "ports"

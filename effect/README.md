@@ -124,3 +124,50 @@ Randomness is RECOMMENDED to be souiderived from a trused high-entropy source, s
 
 
 NOTE TO SELF: on `crud/read`, we probably need some kind of max file size limit (and timeout obvs)
+
+
+
+
+
+# 4 Effects
+
+The contract for effects is different from pure computation. As effects by definition interact with the "real world". These may be either commands or queries. Exmaples of effects include reading from DNS, sending an HTTP POST request, running a WASI module with network access, or receieving a random value.
+
+The `with` field MAY be filled from a relative value (previous step)
+
+| Field    | Type    | Description                | Required | Default |
+|----------|---------|----------------------------|----------|---------|
+| `v`      | SemVer  | IPVM effect schema version | No       | `0.1.0` |
+| `args`   | `[{}]`  |                            | No       | `[]`    |
+
+
+
+## 4.3 JSON Example
+
+``` json
+{
+  "using": "docker:1:Qm12345", // Or something... wasm:Qm12345?
+  "do": "executable/run",
+  "inputs": {
+    "func": "calculate",
+    "args": [
+      1,
+      "hello world",
+      {"c": {"ucan/promise": ["/", "some-other-action"]}},
+      {"a": 1, "b": 2, "c": 3}
+    ],
+    "container": {
+      "entry": "/",
+      "workdir": "/",
+    },
+    "env": {
+      "$FOO": "bar"
+    }
+  },
+  "ipvm/config": {
+    "v": "0.1.0",
+    "secret": false,
+    "check": {"optimistic": 2}
+  }
+}
+```
