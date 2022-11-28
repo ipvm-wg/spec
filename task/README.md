@@ -23,9 +23,11 @@ Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is
 
 # 1 Introduction
 
-IPVM Tasks are a subtype of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Tasks require certain fields in the `inputs` field.
-
 Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
+
+IPVM Tasks are defined as a subtype of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Tasks require certain fields in the `inputs` field to configure IPVM for timeouts, gas usage, credits, transactional guarantees, result visibility, and so on.
+
+## 2 Effects
 
 Tasks can be broken into categories:
 
@@ -82,23 +84,27 @@ One way to represent the difference between these pictorally is with box-and-wir
 Unsafe
 ```
 
-## 1.1 Pure Functions
+FIXME safety level MUST be defined by the pair `(URI Scheme, Ability)` (service metadata). This may need a field on the workflow.
+
+## 2.1 Pure Functions
 
 Pure functions are very safe and simple. They can be retried safely, and their output is directly verifiable against other executions. Once a pure function has been accepted, it can be cached with an infinite TTL. The output of a pure function is fully equivalent to the invocation of the function and its arguments.
 
 Note that in IPVM, pre-resolved CID handles are treated as referentially transparent. See [CID Handles](FIXME).
 
-## 1.2 Nondestructive Effects
+## 2.2 Nondestructive Effects
 
 For the pureposes of IPVM, nondestructive effects are modelled as coming from "the world", and can be treated as input. They are not pure, because they depend on things outside of the workflow such as read-only state and nondeterminsm. Since they are not guaranteed reproducable, they can change from one request to the next. While this kind of effect They can be thought of as "read only", since they only report from outside source, but do not change it.
 
 Nondestructive effects can be retried or raced safely. Each nondestructive invocation is unique, and need to be attested from a trusted source. Once their value enters the IPVM system, it is treated as a pure value.
 
-## 1.3 Destructive Effects
+## 2.3 Destructive Effects
 
 Destructive effects are the opposite: they "update the world". Sending an text message cannot be retried without someone noticing a second text message. Destructive effects require careful handling, with attestation from the executor. Ensuring exact-once execution of destructive effects requires consensus on the execution schedule of the one task, which often incurs a performance penalty over other forms of task.
 
-# 2 Content Handles
+# 3 Content Handles
+
+FIXME This probably belongs in its own spec. Now that we have the basic concept, it keeps coming up in conversation.
 
 [Content Identifiers](https://docs.ipfs.tech/concepts/content-addressing/) (CIDs) are integral to IPFS. They map a hash to its preimage, which is a stable identifier for it across all machines, liberating it from location. However, this does not guarantee that the CID is resolvable at a particular time or place.
 
@@ -131,101 +137,86 @@ resolve :: CID -> IO (Either Timeout CHa)
 
 # 2 Envelope
 
+An IPVM Task MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `inputs` field. As such, the URI and command to be run are handled at the Action layer. 
+
+``` ipldsch
+type Action struct {
+  using  URI
+  do     Ability
+  input  Any
+  
+  -- IPVM Specific
+  config TaskConfig (implicit {}) 
+}
+
+type TaskConfig struct {
+  v      SemVer
+  secret Boolean (implicit False)
+  check  Verification
+}
+
+type Verification struct {
+  | Attestation
+  | Consensus(Integer)
+  | Optimistic(Integer)
+  | ZKP(ZeroKnowledge)
+}
+
+type Optimistic struct {
+  confirmations Integer
+  referee Referee
+}
+
+type Referee enum {
+  | ZK(ZeroKnowledge)
+  | Trusted(URI)
+}
+
+type ZeroKnowledge enum {
+  | Groth16
+  | Nova
+  | Nova2
+}
+```
+
 All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
 
-| Field     | Type              | Description                  | Required | Default   |
-|-----------|-------------------|------------------------------|----------|-----------|
-| `type`    | `string`          | The type of task (Wasm, etc) | Yes      |           |
-| `version` | SemVer            |                              | No       | `"0.1.0"` |
-| `secret`  | `Boolean or null` | <!-- or publish? -->         | No       | `null`    |
-| `meta`    | `Object`          |                              | No       | `{}`      |
+| Field    | Type                   | Description                             | Required | Default |
+|----------|------------------------|-----------------------------------------|----------|---------|
+| `v`      | SemVer                 | IPVM Task Version                       | Yes      |         |
+| `secret` | `Boolean or null`      | Whether the output is unsafe to publish | No       | `null`  |
+| `check`  | `Verification or null` |                                         |          |         |
 
-<!-- | `auth`    | `&UCAN[]`         |                              | No       | `[]`      | -->
+## 2.1 IPLD Schema
 
-<!-- 
-Why no auth at this layer? Really simple: you don't know who you're delegating to yet!
--->
+``` ipldsch
+type TaskConfig struct {
+  secret nullable optional Boolean
+}
+```
+
+## 2.2 JSON Examples
 
 ``` json
 {
-  "ucan/invoke": "QmYW8Z58V1v8R25USVPUuFHtU7nGouApdGTk3vRPXmVHPR",
-  "v": "0.1.0",
-  "nnc": "abcdef",
-  "ext": null,
-  "run": {
-    "update-dns" : {
-      "using": "dns://example.com?TYPE=TXT":
-      "do": "crud/update",
-      "inputs": { 
-         "value": "hello world",
-         "retries": 5
-      }
-    },
-    "notify-bob": {
-      "using": "mailto://alice@example.com",
-      "do": "msg/send",
-      "inputs": [
-        {
-          "to": "bob@example.com",
-          "subject": "DNSLink for example.com",
-          "body": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
-        }
-      ]
-    },
-    "notify-carol": {
-      "using": "mailto://alice@example.com",
-      "do": "msg/send",
-      "inputs": [
-        {
-          "to": "carol@example.com",
-          "subject": "DNSLink for example.com",
-          "body": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
-        }
-      ]
-    },
-    "log-as-done": {
-      "using": "https://example.com/report"
-      "do": "crud/update"
-      "inputs": [
-        {
-          "from": "mailto://alice@exmaple.com",
-          "to": ["bob@exmaple.com", "carol@example.com"],
-          "event": "email-notification",
-        },
-        {
-          "_": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
-        },
-        {
-          "_": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
-        }
-      ]
-    }
+  "using": "dns://example.com?TYPE=TXT",
+  "do": "crud/update",
+  "inputs": { 
+     "value": "hello world"
   },
-  "sig": "bdNVZn_uTrQ8bgq5LocO2y3gqIyuEtvYWRUH9YT-SRK6v_SX8bjt-VZ9JIPVTdxkWb6nhVKBt6JGpgnjABpOCA"
+  "ipvm/config": {
+    "v": "0.1.0",
+    "secret": false,
+    "timeout": { "ms": 5000 },
+    "retries": 5,
+    "verification": 
+  }
 }
 ```
 
 ## 2.1 Fields
 
-### 2.1.1 `type`
-
-The `type` field is used to declare the shape of the objet. This field MUST be either `ipvm/wasm` for pure Wasm, or `ipvm/effect` for effectful computation.
-
-### 2.1.2 `with` Resource
-
-The `with` field MUST contain a CID or URI of the resource to interact with. For example, this MAY be the Wasm to execute, or the URL of a web server to send a message to.
-
-### 2.1.3 `args`
-
-FIXME define mapping to ABI / WIT
-
-The `input` field contains an array of objects. Each entry represents an association of human-readable labels to values (or references to values). The index is significant, since many tasks take only positonal input.
-
-Values MUST be serialized as ______. If an input is given as an object, it MUST be treated as 
-
-For ex
-
-### 2.1.4 `secret`
+### 2.1.1 `secret`
 
 The `secret` flag marks a task as being unsuitable for publication.
 
@@ -345,6 +336,11 @@ The `with` field MAY be filled from a relative value (previous step)
 ```
 
 # 5 Prior Art
+
+* [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126)
+* [BucketVM](https://purrfect-tracker-45c.notion.site/bucket-vm-73c610906fe44ded8117fd81913c7773)
+* [UCAN Invocation](https://github.com/ucan-wg/invocation)
+* [WarpForge Formula](https://github.com/warptools/warpforge/blob/master/examples/100-formula-parse/example-formulas.md)
 
 # 6 Acknowledgments
 
