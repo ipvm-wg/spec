@@ -11,7 +11,7 @@
 ## Authors
 
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
-* [Simon Worthington](https://github.com/simonwo), [Bacalhau Project](https://www.bacalhau.org/) _(TODO: Provisionally!)_
+* [Simon Worthington](https://github.com/simonwo), [Bacalhau Project](https://www.bacalhau.org/)
 
 ## Language
 
