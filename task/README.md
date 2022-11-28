@@ -2,7 +2,7 @@
 
 > With hands of iron, there's not a task we couldn't do
 >
-> The Good Doctor, [The Protomen](https://en.wikipedia.org/wiki/The_Protomen)
+> — [The Protomen](https://en.wikipedia.org/wiki/The_Protomen), The Good Doctor
 
 ## Editors
 
@@ -141,25 +141,61 @@ An IPVM Task MUST be embedded inside of a [UCAN Action](https://github.com/ucan-
 
 ``` ipldsch
 type Action struct {
+  -- UCAN Invoctaion
   using  URI
   do     Ability
   input  Any
   
-  -- IPVM Specific
+  -- IPVM Configuration
   config TaskConfig (implicit {}) 
 }
+```
 
+All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
+
+| Field    | Type              | Description                             | Required | Default         |
+|----------|-------------------|-----------------------------------------|----------|-----------------|
+| `v`      | SemVer            | IPVM Task Version                       | Yes      |                 |
+| `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`          |
+| `check`  | `Verification`    | How to verify the output                | No       | `"attestation"` |
+
+## 2.1 Fields
+
+### 2.1.1 Version
+
+The version of the IPVM 
+
+### 2.1.2 Secret Flag
+
+The `secret` flag marks a task as being unsuitable for publication.
+
+If the `sceret` field is explicitely set, the task MUST be treated per that setting. If not set, the `secret` field defaults to `null`, which behaves as a soft `false`. If such a task consumes input from a `secret` source, it is also marked as `secret`.
+
+Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider using [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
+
+### 2.1.3 Verification Method
+
+FIXME
+
+## 2.2 IPLD Schema
+
+``` ipldsch
 type TaskConfig struct {
   v      SemVer
   secret Boolean (implicit False)
-  check  Verification
+  check  Verification (implicit Attestation)
 }
 
-type Verification struct {
-  | Attestation
+type Verification enum {
+  | Oracle
   | Consensus(Integer)
   | Optimistic(Integer)
-  | ZKP(ZeroKnowledge)
+  | ZKP
+}
+
+type Oracle enum {
+  | Attestation
+  | ThirdParty(DID)
 }
 
 type Optimistic struct {
@@ -172,57 +208,35 @@ type Referee enum {
   | Trusted(URI)
 }
 
-type ZeroKnowledge enum {
+type Consensus struct {
+  agents [DID]
+  -- FIXME needs more detail on method etc
+}
+
+type ZKP enum {
   | Groth16
   | Nova
   | Nova2
-}
 ```
 
-All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
-
-| Field    | Type                   | Description                             | Required | Default |
-|----------|------------------------|-----------------------------------------|----------|---------|
-| `v`      | SemVer                 | IPVM Task Version                       | Yes      |         |
-| `secret` | `Boolean or null`      | Whether the output is unsafe to publish | No       | `null`  |
-| `check`  | `Verification or null` |                                         |          |         |
-
-## 2.1 IPLD Schema
-
-``` ipldsch
-type TaskConfig struct {
-  secret nullable optional Boolean
-}
-```
-
-## 2.2 JSON Examples
+## 2.3 JSON Examples
 
 ``` json
 {
   "using": "dns://example.com?TYPE=TXT",
   "do": "crud/update",
   "inputs": { 
-     "value": "hello world"
+    "value": "hello world"
   },
   "ipvm/config": {
     "v": "0.1.0",
     "secret": false,
     "timeout": { "ms": 5000 },
     "retries": 5,
-    "verification": 
+    "verification": "attestation"
   }
 }
 ```
-
-## 2.1 Fields
-
-### 2.1.1 `secret`
-
-The `secret` flag marks a task as being unsuitable for publication.
-
-If the `sceret` field is explicitely set, the task MUST be treated per that setting. If not set, the `secret` field defaults to `null`, which behaves as a soft `false`. If such a task consumes input from a `secret` source, it is also marked as `secret`.
-
-Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider using [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
 
 # 3 Pure Wasm
 
@@ -232,33 +246,55 @@ Note that while the function itself is pure, as is dereferencing content-address
 
 The Wasm configuration MUST extend the core task type as follows:
 
-| Field     | Type                  | Description                               | Required | Default                       |
-|-----------|-----------------------|-------------------------------------------|----------|-------------------------------|
-| `type`    | `"ipvm/wasm"`         | Identify this task as Wasm 1.0            | Yes      |                               |
-| `version` | SemVer                | The Wasm module's Wasm version            | No       | `"0.1.0"`                     |
-| `mod`     | CID                   | Reference to the Wasm module to run       | Yes      |                               |
-| `fun`     | `String or OutputRef` | The function to invoke on the Wasm module | Yes      |                               |
-| `args`    | `[{String => CID}]`   | Arguments to the Wasm executable          | Yes      |                               |
-| `secret`  | Boolean               |                                           | No       | `False`                       |
-| `maxgas`  | Integer               | Maximum gas for the invocation            | No       | 1000 <!-- ...or something --> |
+| Field  | Type                  | Description                               | Required | Default |
+|--------|-----------------------|-------------------------------------------|----------|---------|
+| `v`    | SemVer                | The Wasm module's Wasm version            | No       | `0.1.0` |
+| `func` | `String or OutputRef` | The function to invoke on the Wasm module | Yes      |         |
+| `args` | `[{String => CID}]`   | Arguments to the Wasm executable          | Yes      |         |
+  
+## 3.2 IPLDS Schema
 
-## 3.1 `type`
+``` ipldsch
+type WasmTask struct {
+  v    SemVer
+  func String -- Function name to invoke 
+  args [Any]  -- Positional arguments FIXME **for now** -- we need to figure out WIT, I know
+}
+```
 
-The `type` field declares this object to be an IPVM Wasm configuration. The value MUST be `ipvm/wasm`.
+## 3.3 JSON Example
 
-## 3.2 `with`
-
-The `with` field declares the Wasm module to load via CID.
-
-Note that the 
-
-## 3.3 `input`
-
-## 3.4 `maxgas`
-
-The `maxgas` field specifies the upper limit in gas that this task may consume.
-
-For the gas schedule, please see the [gas schedule spec].
+``` js
+{
+  // Clean, but possible a bridge too far. Probably handle this in an implcit like CIDs
+  "supply-gas": {
+    "using": "gas:reserve://mine", // Or something... needs work at least
+    "do": "gas/supply",
+    "inputs": {
+      "on": ["/", "some-wasm"],
+      "max": 1000
+    }
+  },
+  "some-wasm": {
+    "using": "wasm:1:Qm12345", // Or something... wasm:Qm12345?
+    "do": "wasm/run",
+    "inputs": {
+      "func": "calculate",
+      "args": [
+        1,
+        "hello world",
+        {"ucan/promise": ["/", "some-other-action" /* ... */]},
+        {"a": 1, "b": 2, "c": 3}
+      ]
+    },
+    "ipvm/config": {
+      "v": "0.1.0",
+      "secret": false,
+      "check": {"optimistic": 2}
+    }
+  }
+}
+```
 
 # 4 Effects
 
@@ -266,15 +302,11 @@ The contract for effects is different from pure computation. As effects by defin
 
 The `with` field MAY be filled from a relative value (previous step)
 
-| Field     | Type            | Description                         | Required | Default |
-|-----------|-----------------|-------------------------------------|----------|---------|
-| `type`    | `"ipvm/effect"` | Identify this workflow as an effect | Yes      |         |
-| `version` | SemVer          | IPVM effect schema version          | No       | `0.1.0` |
-| `using`   | URI             |                                     | Yes      |         |
-| `do`      | ability         |                                     | Yes      |         |
-| `args`    | `[{}]`          |                                     | No       | `[]`    |
-| `timeout` | Integer         | Timeout in milliseconds             | No       | `5000`  |
-| `auth`    | `[&UCAN]`       |                                     | No       | `[]`    |
+| Field     | Type      | Description                | Required | Default |
+|-----------|-----------|----------------------------|----------|---------|
+| `v`       | SemVer    | IPVM effect schema version | No       | `0.1.0` |
+| `args`    | `[{}]`    |                            | No       | `[]`    |
+| `timeout` | Integer   | Timeout in milliseconds    | No       | `5000`  |
 
 <!-- | `destructive` | Boolean         |  FIXME infer from `do` field?  | No       | `True`  | -->
 <!-- indeed these need to be registered by the runner -->
