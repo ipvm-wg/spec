@@ -8,20 +8,25 @@
 
 * [Blaine Cook](https://github.com/blaine), [Fission](https://fission.codes)
 * [Zeeshan Lakhani](https://github.com/zeeshanlakhani), [Fission](https://fission.codes)
-* [ ] [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
+* [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
     
 ## Language
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
-# Subspecs 
+## Depends On 
+
+* [Multiformats](https://multiformats.io)
+* [UCAN Capabilities](https://github.com/ucan-wg/spec)
+* [UCAN Invocation](https://github.com/ucan-wg/invocation)
+
+## Subspecs 
 
 * Description Formats
   * [Workflow](./workflow/README.md)
   * [Task](./task/README.md)
   * [Effect](./effect/README.md)
-  * [Invocation](./invocation/README.md)
-  * Receipt
+  * [UCAN Invocation](https://github.com/ucan-wg/invocation)
 * Runtime
   * Distributed Scheduler
     * Planner
@@ -70,6 +75,33 @@ Configuration DSLs like IPVM jobs can become very complex. By their nature, jobs
 By having to account for a huge number of possible cases, the burden is placed on the programmer in exchange for a high degree of control. Sensible defaults, [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration), and scoped settingshelp aleviate this problem.
 
 Partial failure in a deterministic system is simplified by using transactional semantics for the job as a whole. The difficult case lies with any effects that destructively update the real world.
+
+# Stack Diagrram
+
+```
+┌───────────────────────────────────────────────┬───────────────────────────┐
+│                                               │                           │
+│             Human Configuration:              │                           │
+│  Defaults, Exception Handling, Comments, Tags │                           │
+│               (IPVM Workflow)                 │                           │
+│                                               │  Multi-Request Pipelining │
+├───────────────────────────────────────────────┤     (UCAN Invocation)     │
+│                                               │                           │
+│      IPVM Config, Verification Level, etc     │                           │
+│                 (IPVM Task)                   │                           │
+│                                               │                           │
+├───────────────────────────────────────────────┴───────────────────────────┤
+│                                                                           │
+│                               Call Graph                                  │
+│                            (UCAN Invocation)                              │
+│                                                                           │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│                                Authority                                  │
+│                               (UCAN Core)                                 │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+```
 
 # 2 Effect System
 

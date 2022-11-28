@@ -23,6 +23,8 @@ Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is
 
 # 1 Introduction
 
+IPVM Tasks are a subtype of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Tasks require certain fields in the `inputs` field.
+
 Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
 
 Tasks can be broken into categories:
@@ -104,6 +106,8 @@ A Content Handle (CHa) is a type that MUST only be created by the runtime and MU
 
 This  that the CID has been checked, and the runner guarintees that it is available in the current environment.
 
+NOTE TO SELF: should CHa be its own spec? Seems useful :thinking:
+
 | Issue                         | At Fault               |
 |-------------------------------|------------------------|
 | Malformed CID                 | Requestor              |
@@ -141,6 +145,65 @@ All tasks MUST contain at least the following fields. They MAY contain others, d
 <!-- 
 Why no auth at this layer? Really simple: you don't know who you're delegating to yet!
 -->
+
+``` json
+{
+  "ucan/invoke": "QmYW8Z58V1v8R25USVPUuFHtU7nGouApdGTk3vRPXmVHPR",
+  "v": "0.1.0",
+  "nnc": "abcdef",
+  "ext": null,
+  "run": {
+    "update-dns" : {
+      "using": "dns://example.com?TYPE=TXT":
+      "do": "crud/update",
+      "inputs": { 
+         "value": "hello world",
+         "retries": 5
+      }
+    },
+    "notify-bob": {
+      "using": "mailto://alice@example.com",
+      "do": "msg/send",
+      "inputs": [
+        {
+          "to": "bob@example.com",
+          "subject": "DNSLink for example.com",
+          "body": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
+        }
+      ]
+    },
+    "notify-carol": {
+      "using": "mailto://alice@example.com",
+      "do": "msg/send",
+      "inputs": [
+        {
+          "to": "carol@example.com",
+          "subject": "DNSLink for example.com",
+          "body": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
+        }
+      ]
+    },
+    "log-as-done": {
+      "using": "https://example.com/report"
+      "do": "crud/update"
+      "inputs": [
+        {
+          "from": "mailto://alice@exmaple.com",
+          "to": ["bob@exmaple.com", "carol@example.com"],
+          "event": "email-notification",
+        },
+        {
+          "_": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
+        },
+        {
+          "_": {"ucan/promise": ["/", "dns://example.com?TYPE=TXT", "crud/update", "http/body"]}
+        }
+      ]
+    }
+  },
+  "sig": "bdNVZn_uTrQ8bgq5LocO2y3gqIyuEtvYWRUH9YT-SRK6v_SX8bjt-VZ9JIPVTdxkWb6nhVKBt6JGpgnjABpOCA"
+}
+```
 
 ## 2.1 Fields
 
@@ -241,9 +304,8 @@ The `with` field MAY be filled from a relative value (previous step)
 
  ``` json
 {
-  "type": "ipvm/pure",
-  "version": "0.1.0",
   "using": "wasm:Qm12345"
+  "do": "ipvm/call",
   "args": {
     "type": "ipvm/wasm",
     "version": "0.1.0",
