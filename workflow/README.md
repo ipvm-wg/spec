@@ -75,45 +75,17 @@ Shared-nothing architecture. Even if shared memory is used, it MUST be controlle
 
 The outer wrapper of a workflow MUST contain the following fields:
 
-| Field          | Type                        | Description                               | Required | Default |
-|----------------|-----------------------------|-------------------------------------------|----------|---------|
-| `type`         | `"ipvm/workflow"`           | Object type identifier                    | Yes      |         |
-| `version`      | `"0.1.0"`                   | IPVM workflow version                     | Yes      |         |
-| `requestor`    | DID                         | Requestor's DID                           | Yes      |         |
-| `nonce`        | String                      | Unique nonce                              | Yes      |         |
-| `verification` | `{"optimistic": 2} or null` |                                           | Yes      |         |
-| `meta`         | `&Object`                   | User-defined object (tags, comments, etc) | No       | `{}`    |
-| `parent`       | `CID-relative Path or null` | The CID of the initiating task (if any)   | No       | `null`  |
-| `defaults`     | `IpvmConfig`                |                                           | No       | `{}`    |
-| `tasks`        | `{String => Task}`          | Named tasks                               | Yes      |         |
-| `exception`    | `Task.Wasm`                 |                                           | No       | `null`  |
-| `signature`    | Varsig                      | Signature of serialized fields            | Yes      |         |
-
-``` ipldsch
-FIXME
-
-type Workflow struct {
-  ver String
-  req DID
-  nnc String 
-  vfy Verification 
-  meta &{String:String} implicit {}
-  par &Task optional nullable
-  dfl Config implicit {}
-  tsks {String: Task}
-  exc &Wasm optional nullable
-  sig
-}
-
-type Verification union {
-  | OptimisticVerification
-  | "snark"
-} representation keyed
-
-type OptimisticVerification struct {
-  optimistic Integer
-}
-```
+| Field       | Type                                               | Description                                      | Required | Default |
+|-------------|----------------------------------------------------|--------------------------------------------------|----------|---------|
+| `type`      | `"ipvm/workflow"`                                  | Object type identifier                           | Yes      |         |
+| `v`         | `"0.1.0"`                                          | IPVM workflow version                            | Yes      |         |
+| `nnc`       | String                                             | Unique nonce                                     | Yes      |         |
+| `meta`      | `Object`                                           | User-defined object (tags, comments, etc)        | No       | `{}`    |
+| `par`       | `CID-relative Path or null`                        | The CID of the initiating (parent) task (if any) | No       | `null`  |
+| `defaults`  | `IpvmConfig`                                       |                                                  | No       | `{}`    |
+| `tasks`     | `UCAN.Invocation`                                  | UCAN Invocation                                  | Yes      |         |
+| `exception` | `Task.DeterminisicWasm`                            |                                                  | No       | `null`  |
+| `signature` | [Varsig](https://github.com/ChainAgnostic/varsig/) | Varsig (IPLD signature) of serialized fields     | Yes      |         |
 
 ## 2.1 Fields
 
@@ -159,134 +131,6 @@ See the [Task](FIXME) section for more.
 
 The `exception` field contains a Task with predefined inputs. See the [Exception Handling](FIXME) section for more.
 
-## 2.1.10 Signature
-
-The signature of the CID represented by the other fields.
-
-## 2.2 Example
-
-Here is a simple example:
-
-```
-┌─────────┐   ┌─────────┐
-│         │   │         │
-│  left   │   │  right  │
-│         │   │         │
-└────────┬┘   └─┬───────┘
-         │      │
-         │      │
-       ┌─▼──────▼┐
-       │         │
-       │   end   │
-       │         │
-       └─────────┘
-```
-
-Here, two tasks (`left` and `right`) are used as input to a third task (`end`). This is fully configured in IPVM as:
-
-``` json
-{
-  "type": "ipvm/workflow",
-  "version": "0.1.0",
-  "requestor": "did:key:zAlice",
-  "nonce": "o3--8Gdu5",
-  "verification": {"optimistic": 2},
-  "tasks": {
-    "left": {
-      "type": "ipvm/wasm",
-      "version": "0.1.0",
-      "wasm": "bafkreiecadaahndb55cgvemhctwoojcc4hv4alogybpqndzj4mq7brixcy",
-      "inputs": [],
-      "outputs": ["foo", "bar"] <!-- FIXME component model / wit instead? -->
-    },
-    "right": {
-      "type": "ipvm/wasm",
-      "wasm": "bafkreidrvex7kbqiow7gbqzvj452hr3vbifmfvyd55qicfwrw6xvq3qnlq",
-      "inputs": [
-        { "quux": "bafy123" }
-      ]
-    },
-    "end": {
-      "type": "ipvm/wasm",
-      "wasm": "bafkreihvr3nup2lpny3ip3hkqv7s7ggq5wit5dkvyaexztnl54rkrlbdhe",
-      "inputs": [
-        { "a": { "from": "left", "output": "bar" } },
-        { "b": { "from": "right" } },
-        { "c": 123 }
-      ]
-    }
-  },
-  "signature": "abcdef"
-}
-```
-
-# 3 Global Defaults
-
-The global defaults object contains options for the Workflow itself, as well as cascading defaults for Tasks.
-
-| Field     | Type         | Description                  | Required | Default |
-|-----------|--------------|------------------------------|----------|---------|
-|           |              |                              |          |         |
-| `wasm`    | `CID or URI` | Reference to the Wasm to run | Yes      |         |
-| `effects` |              |                              |          |         |
- 
-## 3.1 Global Wasm Configuration
-
-## 3.2 Global Effects Configuration
-
-# 4 Tasks
-
-While an indivdual invocation is structured like an AST (and eventually memoized as such), the tasks in a workflow spec MAY be unordered. Execution order MUST be determined by the scheduler and implied from the inputs.
-
-For more detail, refer to the [Task](FIXME) spec
-
-## 4.1 Pipelining
-
-The output of one task is often the input to another. This is called pipelining, and MUST form one or more directed acyclic graphs (DAGs). Graphs MAY be unrooted.
-
-For example, this is a legal set of task graphs in a single workflow.
-
-```
-┌───────────────Workflow Tasks────────────────┐
-│                                             │
-│                                             │
-│  ┌─────────┐  ┌─────────┐      ┌─────────┐  │
-│  │         │  │         │      │         │  │
-│  │         │  │         │      │         │  │
-│  │         │  │         │      │         │  │
-│  └───────┬─┘  └─┬───────┘      └────┬────┘  │
-│          │      │                   │       │
-│          │      │                   │       │
-│        ┌─▼──────▼─┐            ┌────▼────┐  │
-│        │          │            │         │  │
-│        │          │            │         │  │
-│        │          │            │         │  │
-│        └─┬──────┬─┘            └─────────┘  │
-│          │      │                           │
-│          │      │                           │
-│  ┌───────▼─┐  ┌─▼───────┐                   │
-│  │         │  │         │                   │
-│  │         │  │         │                   │
-│  │         │  │         │                   │
-│  └─────────┘  └─────────┘                   │
-│                                             │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-Pipelining is acheived via dataflow. Every task is given a name, and its output(s) MUST be referenced by either the task's CID or its name inside the task map. If the task has more than one output, the output MUST be referenced by index (starting from 0) or name.
-
-```
-{"from": "previousTask"}
-{"from": "previousTask", "out": 3}
-{"from": "bafkreifovuswf6ss7czm5gk6ibnd7klhoojhynmiydj6cf7p2yjdsevlga", "out": "firstName" }
-```
-
-References by CID MAY be tasks that executed outside of the current workflow. If the task was not yet executed, it MUST NOT run inside this Workflow.
-
-
-# 7 Exception Handler
-
 Note that while IPVM MUST treat the pure tasks together as transactional, it is not possible to roll back any destructive effects that have been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect.
 
 It is often desirable to fire a specific workflow in the case that a workflow fails. Such cases MAY include wall-clock timeouts, running out of gas, loss of network access, or ___, among others. The exception handler fills a similar role to [GenServer.handle_info/2](https://hexdocs.pm/elixir/1.14.2/GenServer.html#c:handle_info/2).
@@ -295,7 +139,238 @@ Each task MAY include a failure workflow to run on failure.
 
 Note that effectful exception handlers that emit effects (such as network access) MAY fail for the same reason as the workflow that caused the exception to be thrown. Running a pure value is RECOMMENDED.
 
-# 8 Related Work and Prior Art
+
+## 2.1.10 Signature
+
+The signature of the CID represented by the other fields.
+
+## 2.2 IPLD Schema
+
+``` ipldsch
+type Workflow struct {
+  v          SemVer
+  nnc        String 
+  meta       {String : Any}          (implicit {})
+  parent     &Task                   (implicit Null)
+  defauts    SystemConfig            (implicit {})
+  tasks      UCAN.Invocation
+  exception  &Task.DeterministicWasm (implicit Null)
+  sig        Bytes
+}
+```
+
+## 2.3 JSON Exmaples
+
+``` json
+{
+  "type": "ipvm/workflow",
+  "v": "0.1.0",
+  // MORE HERE
+  "signature": "abcdef"
+}
+```
+
+# 3 System Configuation
+
+The global defaults object contains options for the Workflow itself, as well as cascading defaults for Tasks.
+
+| Field    | Type              | Description                             | Required | Default         |
+|----------|-------------------|-----------------------------------------|----------|-----------------|
+| `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`          |
+| `check`  | `Verification`    | How to verify the output                | No       | `"attestation"` |
+| `time`   | Integer           | Timeout in milliseconds                 | No       | `5000`          |
+| `memory` | Integer           | Memory limit in KB                      | No       | `1000`          |
+| `disk`   | Integer           | Disk limit in KB                        | No       | `100000`        |
+
+## 3.1 Fields
+
+### 3.1.1 Version
+
+The version of the IPVM 
+
+### 3.1.2 Secret Flag
+
+The `secret` flag marks a task as being unsuitable for publication.
+
+If the `sceret` field is explicitely set, the task MUST be treated per that setting. If not set, the `secret` field defaults to `null`, which behaves as a soft `false`. If such a task consumes input from a `secret` source, it is also marked as `secret`.
+
+Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider using [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
+
+
+
+FIXME
+
+## 3.2 IPLD Schema
+
+``` ipldsch
+type SystemConfig struct {
+  secret Boolean (implicit False)
+  check  Verification (implicit Attestation)
+  time   Integer 
+  memory Integer
+  disk   Integer
+}
+
+type Verification enum {
+  | Oracle
+  | Consensus(Integer)
+  | Optimistic(Integer)
+  | ZKP
+}
+
+type Oracle enum {
+  | Attestation
+  | ThirdParty(DID)
+}
+
+type Optimistic struct {
+  confirmations Integer
+  referee Referee
+}
+
+type Referee enum {
+  | ZK(ZeroKnowledge)
+  | Trusted(URI)
+}
+
+type Consensus struct {
+  agents [DID]
+  -- FIXME needs more detail on method etc
+}
+
+type ZKP enum {
+  | Groth16
+  | Nova
+  | Nova2
+```
+
+# 4 Tasks
+
+While an indivdual invocation is structured like an AST (and eventually memoized as such), the tasks in a workflow spec MAY be unordered. Execution order MUST be determined by the scheduler and implied from the inputs.
+
+For more detail, refer to the [Task](FIXME) spec
+
+Task Canonicalization -- FIXME ref the UCAN Invocation spec
+
+
+
+# Task
+
+> With hands of iron, there's not a task we couldn't do
+>
+> — [The Protomen](https://en.wikipedia.org/wiki/The_Protomen), The Good Doctor
+
+Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is restricted to a single type, such as a Wasm module, or effects like an HTTP `GET` request.
+
+Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
+
+# 1.1 Task Envelope
+
+IPVM Tasks are defined as an extension of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
+
+An IPVM Task MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `inputs` field. As such, the URI and command to be run are handled at the Action layer. 
+
+``` ipldsch
+type Action struct {
+  using      URI
+  do         Ability
+  input      Any
+  taskConfig TaskConfig (implicit {})
+}
+```
+
+All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
+
+
+
+## 2.3 JSON Examples
+
+``` json
+{
+  "using": "dns://example.com?TYPE=TXT",
+  "do": "crud/update",
+  "inputs": { 
+    "value": "hello world"
+  },
+  "ipvm/config": {
+    "v": "0.1.0",
+    "secret": false,
+    "timeout": { "ms": 5000 },
+    "retries": 5,
+    "verification": "attestation"
+  }
+}
+```
+
+Deterministic WebAssembly
+
+``` js
+{
+  // Clean, but possible a bridge too far. Probably handle this in an implcit like CIDs
+  "supply-gas": {
+    "using": "gas:reserve://mine", // Or something... needs work at least
+    "do": "gas/supply",
+    "inputs": {
+      "on": ["/", "some-wasm"],
+      "max": 1000
+    }
+  },
+  "some-wasm": {
+    "using": "wasm:1:Qm12345", // Or something... wasm:Qm12345?
+    "do": "ipvm/run",
+    "inputs": {
+      "func": "calculate",
+      "args": [
+        1,
+        "hello world",
+        {"c": {"ucan/promise": ["/", "some-other-action"]}},
+        {"a": 1, "b": 2, "c": 3}
+      ]
+    },
+    "ipvm/config": {
+      "v": "0.1.0",
+      "secret": false,
+      "check": {"optimistic": 2}
+    }
+  }
+}
+```
+
+Docker
+
+``` json
+{
+  "using": "docker:1:Qm12345", // Or something... wasm:Qm12345?
+  "do": "docker/run",
+  "inputs": {
+    "func": "calculate",
+    "args": [
+      1,
+      "hello world",
+      {"c": {"ucan/promise": ["/", "some-other-action"]}},
+      {"a": 1, "b": 2, "c": 3}
+    ],
+    "container": {
+      "entry": "/",
+      "workdir": "/",
+    },
+    "env": {
+      "$FOO": "bar"
+    }
+  },
+  "ipvm/config": {
+    "v": "0.1.0",
+    "secret": false,
+    "check": {"optimistic": 2}
+  }
+}
+```
+
+# 5 Related Work and Prior Art
+
+* [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126)
+* [BucketVM](https://purrfect-tracker-45c.notion.site/bucket-vm-73c610906fe44ded8117fd81913c7773)
+* [WarpForge Formulas](https://github.com/warptools/warpforge/blob/master/examples/100-formula-parse/example-formulas.md)
 
 AWS Lambda workflow specs
 OCI
@@ -310,7 +385,7 @@ AquaVM
 
 It is not possible to mention the separation of effects from computation without mentioning the algebraic effect lineage from Haskell, OCaml, and Eff. While the overall system looks quite different from the their type-level effects, this work owes a debt to at least Gordon Plotkin and John Power's work on [computational effects](https://homepages.inf.ed.ac.uk/gdp/publications/Overview.pdf), 
 
-# 9 Acknowledgments
+# 6 Acknowledgments
 
 * Steb
 * Mel
