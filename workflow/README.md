@@ -17,15 +17,21 @@
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC2119](https://datatracker.ietf.org/doc/html/rfc2119).
 
+## Dependencies
+
+* [DAG-CBOR](https://ipld.io/specs/codecs/dag-cbor/spec/)
+* [UCAN Invocation](https://github.com/ucan-wg/invocation/)
+* [VarSig](https://github.com/ChainAgnostic/varsig/)
+
 # 0 Abstract
 
-An IPVM Workflow defines the global configuration for a proposed workflow, their individual tasks, dependencies between tasks, any required authorization, authentication, and so on. An IPVM Workflows is an envelope for both the configuration and content layers common to declarative workflow specifications.
+An IPVM Workflow defines everything required to execute one or more tasks: global configuration for a proposed workflow, their individual tasks, dependencies between tasks, authorization, metadata, signatures, and so on.
 
 # 1 Introduction
 
 The potential complexity of a fully distributed execution by potentially unknown peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike a system like WASI, there is a strict separation of effects from pure data, with no intermixing of computation with live pipes.
 
-While capability sytems such as [UCAN](https://github.com/ucan-wg/spec/) include the information required to execute a workflow, they assume an established audience (which too ridig for negotiation), do not signal the _intent_ to execute, and do not include fields to configure settings for the actual runtime.
+While capability sytems such as [UCAN](https://github.com/ucan-wg/spec/) include the information required to execute a workflow, they assume an established audience (which too rigid for negotiation), do not signal the _intent_ to execute, and do not include fields to configure settings for the actual runtime.
 
 IPVM Workflows MUST be suitable for the proposal of workflows and negotiation with provuders on a discovery layer (ahead of credential delegation), execution on untrusted peer machines, and ___. Workflows SHOULD provide a sufficiently expressive base to build more complex models such as actors, event-driven systems, map-reduce, and so on.
 
@@ -37,13 +43,13 @@ IPVM Workflows MUST be suitable for the proposal of workflows and negotiation wi
 
 While IPVM in aggregate is capable of executing arbitrary programs, individual IPVM Workflows are specified declaratively, and tasks workflows MUST be acyclic. Invocation in the decalarative style liberates the programmer from worrying about explicit sequencing, parallelism, memoization, distribution, and nontermination in a trustless settings. Such constraints also grants the runtime control and flexibility to schedule tasks in an efficient and safe manner.
 
-These constraints impose specific practices. There is no first-class concept of persistent objects or loops. Loops, actors, vats, concurrent objects, and so on MAY be implemented on top of IPVM Workflows by enqueuing new workflows using the effect system (much like a [mailbox receive loop](https://www.erlang.org/doc/efficiency_guide/processes.html)).
+These constraints impose specific practices. There is no first-class concept of persistent objects or loops. Loops, actors, vats, concurrent objects, and so on MAY be implemented on top of IPVM Workflows by enqueuing new workflows with the effect system (much like a [mailbox receive loop](https://www.erlang.org/doc/efficiency_guide/processes.html)).
 
 The core restrictions enforced by the design of IPVM Workflows are:
 
 1. Execution MUST terminate in finite time
 2. Workflow tasks MUST form a partial order
-3. Effects MUST be managed by the runtime and declared ahead of time
+3. Effects MUST be decalared ahead of time and managed by the IPVM host
 
 While effects MUST be declared up front, they MAY also be emitted as output from pure computation (see the core spec for more). This provides a "legal" escape hatch for building higher-level abstraction that incorporate effects.
 
@@ -75,17 +81,72 @@ Shared-nothing architecture. Even if shared memory is used, it MUST be controlle
 
 The outer wrapper of a workflow MUST contain the following fields:
 
-| Field       | Type                                               | Description                                      | Required | Default |
-|-------------|----------------------------------------------------|--------------------------------------------------|----------|---------|
-| `type`      | `"ipvm/workflow"`                                  | Object type identifier                           | Yes      |         |
-| `v`         | `"0.1.0"`                                          | IPVM workflow version                            | Yes      |         |
-| `nnc`       | String                                             | Unique nonce                                     | Yes      |         |
-| `meta`      | `Object`                                           | User-defined object (tags, comments, etc)        | No       | `{}`    |
-| `par`       | `CID-relative Path or null`                        | The CID of the initiating (parent) task (if any) | No       | `null`  |
-| `defaults`  | `IpvmConfig`                                       |                                                  | No       | `{}`    |
-| `tasks`     | `UCAN.Invocation`                                  | UCAN Invocation                                  | Yes      |         |
-| `exception` | `Task.DeterminisicWasm`                            |                                                  | No       | `null`  |
-| `signature` | [Varsig](https://github.com/ChainAgnostic/varsig/) | Varsig (IPLD signature) of serialized fields     | Yes      |         |
+| Field           | Type                                               | Description                                  | Required | Default |
+|-----------------|----------------------------------------------------|----------------------------------------------|----------|---------|
+| `ipvm/workflow` | `Workflow`                                         | IPVM Workflow                                | Yes      |         |
+| `signature`     | [Varsig](https://github.com/ChainAgnostic/varsig/) | Varsig (IPLD signature) of serialized fields | Yes      |         |
+
+| Field       | Type                        | Description                                      | Required | Default |
+|-------------|-----------------------------|--------------------------------------------------|----------|---------|
+| `v`         | `"0.1.0"`                   | IPVM workflow version                            | Yes      |         |
+| `nnc`       | `String`                    | Unique nonce                                     | Yes      |         |
+| `meta`      | `{String : Any}`            | User-defined object (tags, comments, etc)        | No       | `{}`    |
+| `par`       | `CID-relative Path or null` | The CID of the initiating (parent) task (if any) | No       | `null`  |
+| `defaults`  | `IpvmConfig`                |                                                  | No       | `{}`    |
+| `tasks`     | `UCAN.Invocation`           | UCAN Invocation                                  | Yes      |         |
+| `exception` | `Task.DeterminisicWasm`     |                                                  | No       | `null`  |
+
+``` ipldsch
+type SignedWorkflow {
+  inv UCAN.Invocation
+  
+}
+```
+
+``` json
+{
+  "ucan/invoke": {
+    "v": "0.1.0",
+    "nnc": "02468",
+    "ext": {
+      "ipvm/config": {
+     
+      }
+    },
+    "prf": [
+      {"/": "bafkreie2cyfsaqv5jjy2gadr7mmupmearkvcg7llybfdd7b6fvzzmhazuy"},
+      {"/": "bafkreibbz5pksvfjyima4x4mduqpmvql2l4gh5afaj4ktmw6rwompxynx4"}
+    ],
+    "run": {
+      "notify-bob": {
+        "with": "mailto://alice@example.com",
+        "do": "msg/send",
+        "inputs": [
+          {
+            "to": "bob@example.com",
+            "subject": "DNSLink for example.com",
+            "body": "Hello Bob!"
+          }
+        ],
+        "ipvm/config": {
+          "time": {"seconds": "100"}
+        }
+      },
+      "log-as-done": {
+        "with": "https://example.com/report"
+        "do": "crud/update"
+        "inputs": {
+          "from": "mailto://alice@exmaple.com",
+          "to": ["bob@exmaple.com"],
+          "event": "email-notification",
+          "value": {"ucan/promise": ["/", "notify-bob"]} // Pipelined promise
+        }
+      }
+    }
+  },
+  "sig": {"/": {"bytes:": "5vNn4--uTeGk_vayyPuNTYJ71Yr2nWkc6AkTv1QPWSgetpsu8SHegWoDakPVTdxkWb6nhVKAz6JdpgnjABppC7"}}
+}
+```
 
 ## 2.1 Fields
 
@@ -147,15 +208,18 @@ The signature of the CID represented by the other fields.
 ## 2.2 IPLD Schema
 
 ``` ipldsch
+type SignedWorkflow struct {
+  wfl Workflow
+  sig VarSig
+}
+
 type Workflow struct {
   v          SemVer
-  nnc        String 
   meta       {String : Any}          (implicit {})
-  parent     &Task                   (implicit Null)
+  parent     nullable &Task          (implicit Null)
   defauts    SystemConfig            (implicit {})
   tasks      UCAN.Invocation
   exception  &Task.DeterministicWasm (implicit Null)
-  sig        Bytes
 }
 ```
 
@@ -163,8 +227,11 @@ type Workflow struct {
 
 ``` json
 {
-  "type": "ipvm/workflow",
-  "v": "0.1.0",
+  "ipvm/workflow": {
+    "v": "0.1.0",
+    "nnc": "9dn-3*",
+    
+  }
   // MORE HERE
   "signature": "abcdef"
 }
@@ -174,13 +241,13 @@ type Workflow struct {
 
 The global defaults object contains options for the Workflow itself, as well as cascading defaults for Tasks.
 
-| Field    | Type              | Description                             | Required | Default         |
-|----------|-------------------|-----------------------------------------|----------|-----------------|
-| `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`          |
-| `check`  | `Verification`    | How to verify the output                | No       | `"attestation"` |
-| `time`   | Integer           | Timeout in milliseconds                 | No       | `5000`          |
-| `memory` | Integer           | Memory limit in KB                      | No       | `1000`          |
-| `disk`   | Integer           | Disk limit in KB                        | No       | `100000`        |
+| Field    | Type              | Description                             | Required | Default                  |
+|----------|-------------------|-----------------------------------------|----------|--------------------------|
+| `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`                   |
+| `check`  | `Verification`    | How to verify the output                | No       | `"attestation"`          |
+| `time`   | `TimeLength`      | Timeout                                 | No       | `[5, "minutes"]`         |
+| `memory` | `InfoSize`        | Memory limit                            | No       | `[100, "kilo", "bytes"]` |
+| `disk`   | `InfoSize`        | Disk limit                              | No       | `[10, "mega", "bytes"]`  |
 
 ## 3.1 Fields
 
@@ -194,7 +261,7 @@ The `secret` flag marks a task as being unsuitable for publication.
 
 If the `sceret` field is explicitely set, the task MUST be treated per that setting. If not set, the `secret` field defaults to `null`, which behaves as a soft `false`. If such a task consumes input from a `secret` source, it is also marked as `secret`.
 
-Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider using [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
+Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider with [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
 
 
 
@@ -204,22 +271,22 @@ FIXME
 
 ``` ipldsch
 type SystemConfig struct {
-  secret Boolean (implicit False)
+  secret Boolean      (implicit False)
   check  Verification (implicit Attestation)
   time   Integer 
   memory Integer
   disk   Integer
 }
 
-type Verification enum {
+type Verification union {
   | Oracle
-  | Consensus(Integer)
-  | Optimistic(Integer)
+  | Consensus
+  | Optimistic
   | ZKP
-}
+} representation keyed
 
-type Oracle enum {
-  | Attestation
+type Oracle union {
+  | Attestation "attestation"
   | ThirdParty(DID)
 }
 
@@ -230,18 +297,18 @@ type Optimistic struct {
 
 type Referee enum {
   | ZK(ZeroKnowledge)
-  | Trusted(URI)
+  | Trusted(DID)
 }
 
 type Consensus struct {
   agents [DID]
-  -- FIXME needs more detail on method etc
 }
 
 type ZKP enum {
   | Groth16
   | Nova
   | Nova2
+}
 ```
 
 # 4 Tasks
@@ -254,7 +321,7 @@ Task Canonicalization -- FIXME ref the UCAN Invocation spec
 
 
 
-# Task
+# Tasks
 
 > With hands of iron, there's not a task we couldn't do
 >
@@ -264,20 +331,29 @@ Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is
 
 Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
 
+
+
+TODO
+  - deal version: prf: []
+  - actionable version prf: [ucans]
+
 # 1.1 Task Envelope
 
 IPVM Tasks are defined as an extension of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
 
 An IPVM Task MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `inputs` field. As such, the URI and command to be run are handled at the Action layer. 
 
+
 ``` ipldsch
 type Action struct {
-  using      URI
+  with      URI
   do         Ability
   input      Any
   taskConfig TaskConfig (implicit {})
 }
 ```
+
+A Task is a subtype of a UCAN Action
 
 All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
 
@@ -287,17 +363,19 @@ All tasks MUST contain at least the following fields. They MAY contain others, d
 
 ``` json
 {
-  "using": "dns://example.com?TYPE=TXT",
+  "with": "dns://example.com?TYPE=TXT",
   "do": "crud/update",
   "inputs": { 
     "value": "hello world"
   },
-  "ipvm/config": {
-    "v": "0.1.0",
-    "secret": false,
-    "timeout": { "ms": 5000 },
-    "retries": 5,
-    "verification": "attestation"
+  "meta": {
+    "ipvm/config": {
+      "v": "0.1.0",
+      "secret": false,
+      "timeout": { "ms": 5000 },
+      "retries": 5,
+      "verification": "attestation"
+    }
   }
 }
 ```
@@ -308,7 +386,7 @@ Deterministic WebAssembly
 {
   // Clean, but possible a bridge too far. Probably handle this in an implcit like CIDs
   "supply-gas": {
-    "using": "gas:reserve://mine", // Or something... needs work at least
+    "with": "gas:reserve://mine", // Or something... needs work at least
     "do": "gas/supply",
     "inputs": {
       "on": ["/", "some-wasm"],
@@ -316,7 +394,7 @@ Deterministic WebAssembly
     }
   },
   "some-wasm": {
-    "using": "wasm:1:Qm12345", // Or something... wasm:Qm12345?
+    "with": "wasm:1:Qm12345", // Or something... wasm:Qm12345?
     "do": "ipvm/run",
     "inputs": {
       "func": "calculate",
@@ -340,7 +418,7 @@ Docker
 
 ``` json
 {
-  "using": "docker:1:Qm12345", // Or something... wasm:Qm12345?
+  "with": "docker:1:Qm12345", // Or something... wasm:Qm12345?
   "do": "docker/run",
   "inputs": {
     "func": "calculate",
@@ -366,13 +444,80 @@ Docker
 }
 ```
 
+# 5 Appendix
+
+## 5.1 Support Types
+
+``` ipldsch
+type TimeUnit enum {
+  | Seconds 
+  | Minutes 
+  | Days
+  | Weeks
+  | Years
+}
+
+type InfoUnit enum {
+  | Bits 
+  | Nibble
+  | Bytes
+  | Word32
+  | Word64
+} 
+
+type Unit union {
+  | TimeUnit
+  | InfoUnit
+}
+
+type SIPrefix enum {
+  | Pico "p"
+  | Nano "n"
+  | Micro "u"
+  | Milli "m"
+  | Centi "c"
+  | Deci "d"
+  | Unity
+  | Deca "da"
+  | Hecto "ha"
+  | Kilo "k"
+  | Mega "M"
+  | Giga "G"
+  | Tera "T"
+  | Peta "P"
+  | Exa  "E"
+}
+
+type TimeLength struct {
+  magnitude integer
+  prefix    Prefix (implicit Unity)
+  unit      TimeUnit
+} representation tuple
+
+type InfoSize struct {
+  magnitude integer
+  prefix    Prefix (implicit Unity)
+  unit      InfoUnit
+} representation tuple
+
+type Measure union {
+  | TimeLength
+  | InfoSize
+}
+
+[400, "nano", "seconds"]
+```
+
+
+
 # 5 Related Work and Prior Art
 
 * [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126)
 * [BucketVM](https://purrfect-tracker-45c.notion.site/bucket-vm-73c610906fe44ded8117fd81913c7773)
 * [WarpForge Formulas](https://github.com/warptools/warpforge/blob/master/examples/100-formula-parse/example-formulas.md)
 
-AWS Lambda workflow specs
+AWS Lambda workflows
+GH Workflows
 OCI
 E Language
 CapNet
