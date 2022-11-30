@@ -56,7 +56,7 @@ The outer wrapper of a workflow MUST contain the following fields:
 |------------|---------------------|-------------------------------------------------------------------------------------|----------|---------|
 | `v`        | `"0.1.0"`           | IPVM workflow version                                                               | Yes      |         |
 | `meta`     | `{String : Any}`    | User-defined object (tags, comments, etc)                                           | No       | `{}`    |
-| `parent`   | `&Workflow or Null` | The CID of the initiating workflow (if any) FIXME probably want the task & workflow | No       | `null`  |
+| `parent`   | `&Workflow or Null` | The CID of the initiating workflow (if any) FIXME probably want the task & workflow | No       | `Null`  |
 | `config`   | `Config`            |                                                                                     | No       | `{}`    |
 | `defaults` | `Config`            |                                                                                     | No       | `{}`    |
 | `tasks`    | `UCAN.Invocation`   | UCAN Invocation                                                                     | Yes      |         |
@@ -98,21 +98,17 @@ The `exception` field contains a Task with predefined inputs. See the [Exception
 
 ``` ipldsch
 type SignedWorkflow struct {
-  wfl Workflow
-  sig VarSig
+  work Workflow (rename "ipvm/workflow")
+  sig  VarSig
 }
 
 type Workflow struct {
-  v          SemVer
-  meta       {String : Any}  (implicit {})
-  parent     nullable &Task  (implicit Null)
-  defauts    SystemConfig    (implicit {})
-  tasks      UCAN.Invocation
-  on         Listeners       (implicit {}) -- FIXME or just excpetion?
-}
-
-type Listeners struct {
-  exception &Wasm nullable (implicit Null)
+  v         SemVer
+  meta      {String : Any}  (implicit {})
+  parent    nullable &Task  (implicit Null)
+  defauts   SystemConfig    (implicit {})
+  tasks     UCAN.Invocation
+  exception nullable &Wasm  (implicit Null)
 }
 ```
 
@@ -134,9 +130,7 @@ type Listeners struct {
         "memory": [10, "mega", "bytes"]
       }
     },
-    "on": {
-      "exception": "bafkreifsaaztjgknuha7tju6sugvrlbiwbyx5jf2pky2yxx5ifrpjscyhe"
-    },
+    "exception": "bafkreifsaaztjgknuha7tju6sugvrlbiwbyx5jf2pky2yxx5ifrpjscyhe",
     "tasks": "ucan/invoke": {
       "v": "0.1.0",
       "nnc": "02468",
@@ -187,7 +181,7 @@ The IPVM configuration struct defines secrecy, quotas, and verification strategy
 |----------|-------------------|-----------------------------------------|----------|--------------------------|
 | `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`                   |
 | `check`  | `Verification`    | [Verification strategy](FIXME)          | No       | `"attestation"`          |
-| `time`   | `TimeLength`      | Timeout                                 | No       | `[5, "minutes"]`         |
+| `time`   | `TimeInterval`      | Timeout                                 | No       | `[5, "minutes"]`         |
 | `memory` | `InfoSize`        | Memory limit                            | No       | `[100, "kilo", "bytes"]` |
 | `disk`   | `InfoSize`        | Disk limit                              | No       | `[10, "mega", "bytes"]`  |
 | `gas`    | `Integer`         | Gas limit                               | No       | `1000`                   |
@@ -230,9 +224,9 @@ The OPTIONAL `disk` field configures the upper limit in Wasm gas that the execut
 type SystemConfig struct {
   secret Boolean      (implicit False)
   check  Verification (implicit Attestation)
-  time   Time
-  memory Integer
-  disk   Integer
+  time   TimeInterval
+  memory InfoSize
+  disk   InfoSize
   gas    Integer
 }
 ```
@@ -390,7 +384,6 @@ type SIPrefix enum {
   | Milli "m"
   | Centi "c"
   | Deci "d"
-  | Unity
   | Deca "da"
   | Hecto "ha"
   | Kilo "k"
@@ -401,20 +394,20 @@ type SIPrefix enum {
   | Exa  "E"
 }
 
-type TimeLength struct {
-  magnitude integer
-  prefix    Prefix (implicit Unity)
+type TimeInterval struct {
+  magnitude Integer
+  prefix    optional Prefix
   unit      TimeUnit
 } representation tuple
 
 type InfoSize struct {
-  magnitude integer
-  prefix    Prefix (implicit Unity)
+  magnitude Integer
+  prefix    optional Prefix
   unit      InfoUnit
 } representation tuple
 
 type Measure union {
-  | TimeLength
+  | TimeInterval
   | InfoSize
 }
 
