@@ -1,9 +1,5 @@
 # IPVM Workflow Specification v0.1.0
 
-> In late 1970 or early ’71 I approached IBM Canada’s Intellectual Property department to see if we could take out a patent on the basic idea [of dataflow]. Their recommendation, which I feel was prescient, was that this concept seemed to them more like a law of nature, which is not patentable. 
->
-> J. Paul Morrison, [Flow-Based Programming](https://jpaulm.github.io/fbp/book.html)
-
 ## Editors
 
 * [Brooklyn Zelenka](https://github.com/expede), [Fission](https://fission.codes)
@@ -25,9 +21,13 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 # 0 Abstract
 
-An IPVM Workflow defines everything required to execute one or more tasks: global configuration for a proposed workflow, their individual tasks, dependencies between tasks, authorization, metadata, signatures, and so on.
+An IPVM Workflow is a declarative cofiguration. A Workflow provides everything required to execute one or more tasks: defaults, tasks and their dependencies, authorization, metadata, signatures, and so on.
 
 # 1 Introduction
+
+> In late 1970 or early ’71 I approached IBM Canada’s Intellectual Property department to see if we could take out a patent on the basic idea [of dataflow]. Their recommendation, which I feel was prescient, was that this concept seemed to them more like a law of nature, which is not patentable. 
+>
+> J. Paul Morrison, [Flow-Based Programming](https://jpaulm.github.io/fbp/book.html)
 
 The potential complexity of a fully distributed execution by potentially unknown peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike a system like WASI, there is a strict separation of effects from pure data, with no intermixing of computation with live pipes.
 
@@ -81,72 +81,19 @@ Shared-nothing architecture. Even if shared memory is used, it MUST be controlle
 
 The outer wrapper of a workflow MUST contain the following fields:
 
-| Field           | Type                                               | Description                                  | Required | Default |
-|-----------------|----------------------------------------------------|----------------------------------------------|----------|---------|
-| `ipvm/workflow` | `Workflow`                                         | IPVM Workflow                                | Yes      |         |
-| `signature`     | [Varsig](https://github.com/ChainAgnostic/varsig/) | Varsig (IPLD signature) of serialized fields | Yes      |         |
+| Field           | Type       | Description                                                             | Required |
+|-----------------|------------|-------------------------------------------------------------------------|----------|
+| `ipvm/workflow` | `Workflow` | IPVM Workflow                                                           | Yes      |
+| `signature`     | `VarSig`   | [VarSig](https://github.com/ChainAgnostic/varsig/) of serialized fields | Yes      |
 
-| Field       | Type                        | Description                                      | Required | Default |
-|-------------|-----------------------------|--------------------------------------------------|----------|---------|
-| `v`         | `"0.1.0"`                   | IPVM workflow version                            | Yes      |         |
-| `nnc`       | `String`                    | Unique nonce                                     | Yes      |         |
-| `meta`      | `{String : Any}`            | User-defined object (tags, comments, etc)        | No       | `{}`    |
-| `par`       | `CID-relative Path or null` | The CID of the initiating (parent) task (if any) | No       | `null`  |
-| `defaults`  | `IpvmConfig`                |                                                  | No       | `{}`    |
-| `tasks`     | `UCAN.Invocation`           | UCAN Invocation                                  | Yes      |         |
-| `exception` | `Task.DeterminisicWasm`     |                                                  | No       | `null`  |
-
-``` ipldsch
-type SignedWorkflow {
-  inv UCAN.Invocation
-  
-}
-```
-
-``` json
-{
-  "ucan/invoke": {
-    "v": "0.1.0",
-    "nnc": "02468",
-    "ext": {
-      "ipvm/config": {
-     
-      }
-    },
-    "prf": [
-      {"/": "bafkreie2cyfsaqv5jjy2gadr7mmupmearkvcg7llybfdd7b6fvzzmhazuy"},
-      {"/": "bafkreibbz5pksvfjyima4x4mduqpmvql2l4gh5afaj4ktmw6rwompxynx4"}
-    ],
-    "run": {
-      "notify-bob": {
-        "with": "mailto://alice@example.com",
-        "do": "msg/send",
-        "inputs": [
-          {
-            "to": "bob@example.com",
-            "subject": "DNSLink for example.com",
-            "body": "Hello Bob!"
-          }
-        ],
-        "ipvm/config": {
-          "time": {"seconds": "100"}
-        }
-      },
-      "log-as-done": {
-        "with": "https://example.com/report"
-        "do": "crud/update"
-        "inputs": {
-          "from": "mailto://alice@exmaple.com",
-          "to": ["bob@exmaple.com"],
-          "event": "email-notification",
-          "value": {"ucan/promise": ["/", "notify-bob"]} // Pipelined promise
-        }
-      }
-    }
-  },
-  "sig": {"/": {"bytes:": "5vNn4--uTeGk_vayyPuNTYJ71Yr2nWkc6AkTv1QPWSgetpsu8SHegWoDakPVTdxkWb6nhVKAz6JdpgnjABppC7"}}
-}
-```
+| Field       | Type                    | Description                                                                         | Required | Default |
+|-------------|-------------------------|-------------------------------------------------------------------------------------|----------|---------|
+| `v`         | `"0.1.0"`               | IPVM workflow version                                                               | Yes      |         |
+| `meta`      | `{String : Any}`        | User-defined object (tags, comments, etc)                                           | No       | `{}`    |
+| `parent`    | `&Workflow or Null`     | The CID of the initiating workflow (if any) FIXME probably want the task & workflow | No       | `null`  |
+| `defaults`  | `Config`                |                                                                                     | No       | `{}`    |
+| `tasks`     | `UCAN.Invocation`       | UCAN Invocation                                                                     | Yes      |         |
+| `on`        | `Listeners`             | IPVM event listeners                                                                | No       | `{}`    |
 
 ## 2.1 Fields
 
@@ -215,11 +162,15 @@ type SignedWorkflow struct {
 
 type Workflow struct {
   v          SemVer
-  meta       {String : Any}          (implicit {})
-  parent     nullable &Task          (implicit Null)
-  defauts    SystemConfig            (implicit {})
+  meta       {String : Any}  (implicit {})
+  parent     nullable &Task  (implicit Null)
+  defauts    SystemConfig    (implicit {})
   tasks      UCAN.Invocation
-  exception  &Task.DeterministicWasm (implicit Null)
+  on         Listeners       (implicit {}) -- FIXME or just excpetion?
+}
+
+type Listeners struct {
+  exception &Wasm nullable (implicit Null)
 }
 ```
 
@@ -229,11 +180,60 @@ type Workflow struct {
 {
   "ipvm/workflow": {
     "v": "0.1.0",
-    "nnc": "9dn-3*",
-    
-  }
-  // MORE HERE
-  "signature": "abcdef"
+    "meta": {
+      "parent": null,
+    }
+    "defaults": {
+      "global": {
+        "time": [10, "minutes"],
+      },
+      "task": {
+        "gas": 1000,
+        "memory": [10, "mega", "bytes"]
+      }
+    },
+    "on": {
+      "exception": "bafkreifsaaztjgknuha7tju6sugvrlbiwbyx5jf2pky2yxx5ifrpjscyhe"
+    },
+    "tasks": "ucan/invoke": {
+      "v": "0.1.0",
+      "nnc": "02468",
+      "prf": [ -- FIXME having to resend this is a pain!
+        {"/": "bafkreie2cyfsaqv5jjy2gadr7mmupmearkvcg7llybfdd7b6fvzzmhazuy"},
+        {"/": "bafkreibbz5pksvfjyima4x4mduqpmvql2l4gh5afaj4ktmw6rwompxynx4"}
+      ],
+      "run": {
+        "notify-bob": {
+          "with": "mailto://alice@example.com",
+          "do": "msg/send",
+          "inputs": [
+            {
+              "to": "bob@example.com",
+              "subject": "DNSLink for example.com",
+              "body": "Hello Bob!"
+            }
+          ],
+          "meta": {
+            "ipvm/config": {
+              "time": {"seconds": "100"},
+              "secret": true
+            }
+          }
+        },
+        "log-as-done": {
+          "with": "https://example.com/report"
+          "do": "crud/update"
+          "inputs": {
+            "from": "mailto://alice@exmaple.com",
+            "to": ["bob@exmaple.com"],
+            "event": "email-notification",
+            "value": {"ucan/promise": ["/", "notify-bob"]} // Pipelined promise
+          }
+        }
+      }
+    }
+  },
+  "sig": {"/": {"bytes:": "5vNn4--uTeGk_vayyPuNTYJ71Yr2nWkc6AkTv1QPWSgetpsu8SHegWoDakPVTdxkWb6nhVKAz6JdpgnjABppC7"}}
 }
 ```
 
@@ -248,12 +248,13 @@ The global defaults object contains options for the Workflow itself, as well as 
 | `time`   | `TimeLength`      | Timeout                                 | No       | `[5, "minutes"]`         |
 | `memory` | `InfoSize`        | Memory limit                            | No       | `[100, "kilo", "bytes"]` |
 | `disk`   | `InfoSize`        | Disk limit                              | No       | `[10, "mega", "bytes"]`  |
+| `gas`    | `Integer`         | Gas limit                               | No       | `1000`                   |
 
 ## 3.1 Fields
 
 ### 3.1.1 Version
 
-The version of the IPVM 
+The version of the IPVM Workflow
 
 ### 3.1.2 Secret Flag
 
@@ -263,9 +264,29 @@ If the `sceret` field is explicitely set, the task MUST be treated per that sett
 
 Note: there is no way to enforce secrecy at the task-level, so such tasks SHOULD only be negotiated with runners that are trusted. If secrecy must be inviolable, consider with [multi-party computation (MPC)](https://en.wikipedia.org/wiki/Secure_multi-party_computation) or [fully homomorphic encryption (FHE)](https://en.wikipedia.org/wiki/Homomorphic_encryption#Fully_homomorphic_encryption) inside the task.
 
+### 3.1.3 Verification Strategy
 
+The OPTIONAL `check` field MUST supply a verification strategy if present. If omitted, it MUST default to Attestation.
 
 FIXME
+
+### 3.1.4 Time Quota
+
+The `time` field configures the upper limit in wall-clock time that the executor SHOULD allow.
+
+### 3.1.5 Memory Quota
+
+The `memory` field configures the upper limit in system memory that the executor SHOULD allow.
+
+### 3.1.6 Disk Quota
+
+The `disk` field configures the upper limit in system memory that the executor SHOULD allow.
+
+### 3.1.7 Gas Quota
+
+The `disk` field configures the upper limit in Wasm gas that the executor SHOULD allow.
+
+-- FIXME configuarble gas schedule?
 
 ## 3.2 IPLD Schema
 
@@ -273,9 +294,10 @@ FIXME
 type SystemConfig struct {
   secret Boolean      (implicit False)
   check  Verification (implicit Attestation)
-  time   Integer 
+  time   Time
   memory Integer
   disk   Integer
+  gas    Integer
 }
 
 type Verification union {
@@ -311,55 +333,38 @@ type ZKP enum {
 }
 ```
 
-# 4 Tasks
+## 3.3 JSON Examples
 
-While an indivdual invocation is structured like an AST (and eventually memoized as such), the tasks in a workflow spec MAY be unordered. Execution order MUST be determined by the scheduler and implied from the inputs.
+``` json
+{
+  "secret": true,
+  "check": {"optimistic": {"confirmations": 2, "referee": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4"}},
+  "time": [45, "minutes"],
+  "memory": [500, "kilo", "bytes"],
+  "disk": [20, "mega", "bytes"],
+  "gas": 5000
+}
+```
 
-For more detail, refer to the [Task](FIXME) spec
-
-Task Canonicalization -- FIXME ref the UCAN Invocation spec
-
-
-
-# Tasks
+# 4 Task Envelope
 
 > With hands of iron, there's not a task we couldn't do
 >
 > — [The Protomen](https://en.wikipedia.org/wiki/The_Protomen), The Good Doctor
 
+While an indivdual invocation is structured like an AST (and eventually memoized as such), the tasks in a workflow spec MAY be unordered. Execution order MUST be determined by the scheduler and implied from the inputs.
+
 Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is restricted to a single type, such as a Wasm module, or effects like an HTTP `GET` request.
 
 Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
-
-
-
-TODO
-  - deal version: prf: []
-  - actionable version prf: [ucans]
-
-# 1.1 Task Envelope
 
 IPVM Tasks are defined as an extension of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
 
 An IPVM Task MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `inputs` field. As such, the URI and command to be run are handled at the Action layer. 
 
+A Task is a UCAN Action. A `meta["ipvm/config"]` field MAY be used to configure IPVM for this task.
 
-``` ipldsch
-type Action struct {
-  with      URI
-  do         Ability
-  input      Any
-  taskConfig TaskConfig (implicit {})
-}
-```
-
-A Task is a subtype of a UCAN Action
-
-All tasks MUST contain at least the following fields. They MAY contain others, depending on their type.
-
-
-
-## 2.3 JSON Examples
+## 4.1 JSON Examples
 
 ``` json
 {
@@ -370,9 +375,8 @@ All tasks MUST contain at least the following fields. They MAY contain others, d
   },
   "meta": {
     "ipvm/config": {
-      "v": "0.1.0",
       "secret": false,
-      "timeout": { "ms": 5000 },
+      "timeout": [500, "milli", "seconds"],
       "retries": 5,
       "verification": "attestation"
     }
@@ -508,8 +512,6 @@ type Measure union {
 [400, "nano", "seconds"]
 ```
 
-
-
 # 5 Related Work and Prior Art
 
 * [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126)
@@ -532,9 +534,14 @@ It is not possible to mention the separation of effects from computation without
 
 # 6 Acknowledgments
 
-* Steb
-* Mel
-* Christine
+* Steven Allen
+* Melanie Riise
+* Christine Lemmer-Webber
+* Peter Alvaro
+* Juan Benet
+* Mark Miller
 * Blaine Cook
 * Luke Marsden
 * Quinn Wilton
+* Zeeshan Lakhani
+* Irakli Gozalishvili
