@@ -29,7 +29,7 @@ An IPVM Workflow is a declarative cofiguration. A Workflow provides everything r
 >
 > J. Paul Morrison, [Flow-Based Programming](https://jpaulm.github.io/fbp/book.html)
 
-The potential complexity of a fully distributed execution by potentially unknown peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike s systems like WASI, there is a strict separation of effects from pure data, an emphasis on verifiability, and [promise pipelining](http://erights.org/elib/distrib/pipeline.html).
+The potential complexity of a fully distributed execution by untrusted peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike s systems like WASI, there is a strict separation of effects from pure data, an emphasis on verifiability, and [promise pipelining](http://erights.org/elib/distrib/pipeline.html).
 
 IPVM Workflows MUST be suitable for the proposal of workflows and negotiation with provuders on a discovery layer (ahead of credential delegation), execution on untrusted peer machines, and verification. Workflows SHOULD provide a sufficiently expressive base to build more complex models such as actors, event-driven systems, map-reduce, and so on.
 
@@ -78,15 +78,15 @@ The OPTIONAL global `config` object (FIXME section X.Y) sets the configuration f
 
 ## 2.1.5 Defaults
 
-The OPTIONAL global `defaults` object (FIXME section X.Y) sets the configuration for the workflow itself, and defaults for tasks.
+The OPTIONAL `defaults` field configures default [configs](#3-configuration) for tasks.
  
 ## 2.1.6 Tasks
 
-The `tasks` field contains all of the IPVM [Tasks](FIXME) set to run in this Workflow, each labelled by a human-readable key.
+The `tasks` field contains all of the IPVM [Tasks](#4-task-configuration) set to run in this Workflow, each labelled by a human-readable key.
 
 ## 2.1.7 Exception Handler
 
-The OPTIONAL `exception` field contains a Task with predefined inputs. See the [Exception Handling](#7-exception-handling) section for more.
+The OPTIONAL `exception` field contains a Task with predefined inputs. See the [Exception Handling](#7-exception-handling) section for more deatil.
 
 ## 2.2 IPLD Schema
 
@@ -243,33 +243,45 @@ type SystemConfig struct {
 >
 > — [The Protomen](https://en.wikipedia.org/wiki/The_Protomen), The Good Doctor
 
-Tasks are the smallest unit work in an IPVM workflow. Tasks describe everything required to the negotate the of work. While all Tasks share some fields, the details MAY be quite different based on the resorce and action being taken. Each Task is restricted to a single [safety level](FIXME), such as a deterministic Wasm module, or [effects](FIXME) like an HTTP `GET` request or Docker container, with no ability to intermix the two directly.
-
-IPVM Tasks are defined as a subtype of [UCAN Tasks](https://github.com/ucan-wg/invocation/blob/main/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
+Tasks are the smallest level of work granularity a workflow. Tasks describe everything required to the negotate and execute all of the of work. IPVM Tasks are defined as a subtype of [UCAN Tasks](https://github.com/ucan-wg/invocation/blob/main/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
 
 Tasks MAY be configured in aggragate in the [global defaults](#215-defaults). Individual Task configuration MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `meta['ipvm/confg']` field.
 
-## 4.1 JSON Examples
+Note that while all Tasks have a resource (URI) and action, the details MAY be quite different. Each Task is restricted to a specific [safety level](FIXME) based on its resource/action pair (such as a deterministic Wasm module or [effects](FIXME) like an HTTP `GET` request). Tasks MUST be scheduled according to its safety properties, which MAY have a performance impact.
+
+## 4.1 Fields
+
+Recall UCAN Invocation Tasks:
+
+| Field    | Type             | Description                                    | Required | Default |
+|----------|------------------|------------------------------------------------|----------|---------|
+| `with`   | `URI`            |                                                | Yes      |         |
+| `do`     | `Ability`        |                                                | Yes      |         |
+| `inputs` | `Any`            |                                                | Yes      |         |
+| `meta`   | `{String : Any}` | Fields that will be ignored during memoization | No       | `{}`    |
+
+An OPTIONAL IPVM `Config` MAY be included at the `meta['ipvm/config']` path. If included, the `Config` MUST set the IPVM configuration for this Task, overwriting any of the fields on the envelope's top-level `defaults` field, or system-wide defaults.
+
+## 4.3 JSON Examples
 
 ``` json
 {
-  "with": "dns://example.com?TYPE=TXT",
-  "do": "crud/update",
-  "inputs": { 
-    "value": "hello world"
-  },
-  "meta": {
-    "ipvm/config": {
-      "secret": false,
-      "timeout": [500, "milli", "seconds"],
-      "retries": 5,
-      "verification": "attestation"
+  "simple": {
+    "with": "dns://example.com?TYPE=TXT",
+    "do": "crud/update",
+    "inputs": { 
+      "value": "hello world"
+    },
+    "meta": {
+      "ipvm/config": {
+        "secret": false
+        "timeout": [500, "milli", "seconds"],
+        "verification": "attestation"
+      }
     }
   }
 }
 ```
-
-## 4.3 JSON Examples
 
 ``` js
 {
