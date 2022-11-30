@@ -86,7 +86,7 @@ The `tasks` field contains all of the IPVM [Tasks](#4-task-configuration) set to
 
 ## 2.1.7 Exception Handler
 
-The OPTIONAL `exception` field contains a Task with predefined inputs. See the [Exception Handling](#7-exception-handling) section for more deatil.
+The OPTIONAL `catch` field contains a Task with predefined inputs. See the [Exception Handling](#7-exception-handling) section for more deatil.
 
 ## 2.2 IPLD Schema
 
@@ -97,13 +97,13 @@ type SignedWorkflow struct {
 }
 
 type Workflow struct {
-  v         SemVer
-  meta      {String : Any}  (implicit {})
-  parent    nullable &Task  (implicit Null)
-  global    Config          (implicit {}) 
-  defauts   Config          (implicit {})
-  tasks     UCAN.Invocation
-  exception nullable &Wasm  (implicit Null)
+  v       SemVer
+  meta    {String : Any}  (implicit {})
+  parent  nullable &Task  (implicit Null)
+  global  Config          (implicit {}) 
+  defauts Config          (implicit {})
+  tasks   UCAN.Invocation
+  catch   nullable &Wasm  (implicit Null)
 }
 ```
 
@@ -123,7 +123,7 @@ type Workflow struct {
       "gas": 1000,
       "memory": [10, "mega", "bytes"]
     },
-    "exception": "bafkreifsaaztjgknuha7tju6sugvrlbiwbyx5jf2pky2yxx5ifrpjscyhe",
+    "catch": "bafkreifsaaztjgknuha7tju6sugvrlbiwbyx5jf2pky2yxx5ifrpjscyhe",
     "tasks": "ucan/invoke": {
       "v": "0.1.0",
       "nnc": "02468",
