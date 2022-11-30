@@ -103,7 +103,40 @@ Partial failure in a deterministic system is simplified by using transactional s
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
+## 1.2 Humane Design
+
+> People are part of the system. The design should match the user's experience, expectations, and mental models.
+>
+> — Jerome Saltzer & M. Frans Kaashoek, Principles of Computer System Design
+
+While higher-level interfaces over IPVM Workflows MAY be used, ultimately configuration is the UI at this level of abstraction. The core use cases are moving workflows and tasks between machines, logging, and execution. IPVM Workflows aim to provide a computational model with a clear contract ("few if any surprises") for the programmer, while limiting verbosity. IPVM workflows follow the [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration) philosophy with defaults and cascading configuration.
+
+## 1.3 Security Considerations
+
+> A program can create a controlled environment within which another, possible untrustworthy program, can be run safely [but] may leak, i.e., transmit [...] the input data which the customer gives it [...] We will call the problem of constraining a service [from leaking sensitive data] the confinement problem.
+> 
+> Butler W. Lampson, A Note on the Confinement Problem, Communications of the ACM
+
+IPVM runs in trustless ("mutually suspicious") environments. Conceivably either a workflow proposer or service provider could be mallicious. To limit ___.
+
+Working with encrypted data and application secrets (section X.Y) is common practice for many workflows. IPVM treats these as effects and affinities. As it is intended to operate on a public network, secrets MUST NOT be hardcoded into an IPVM Workflow. Any task that involves a dereferenced secret or decrypted data — including its downstream consumers — MUST be marked as secret and not distributed.
+
+While it is tempting to push authorization concerns to a serapate layer, this has historically lead systems to be built on fundamentally insecure primitives. As such, IPVM Workflows include security considerations directly. It is not possible to control the security model of external effects, but it is possible to secure the inbound boundary to IPVM.
+
+Pure computation is always allowed as long as it terminates in a fixed number of steps. An executor 
+
+Shared-nothing architecture. Even if shared memory is used, it MUST be controlled externally via the effect system (i.e. an outside agent).
+
 # 2 Effect System
+
+The core restrictions enforced by the design of IPVM Workflows are:
+
+1. Execution MUST terminate in finite time
+2. Workflow tasks MUST form a partial order
+3. Effects MUST be decalared ahead of time and controlled by the IPVM host
+
+While effects MUST be declared up front, they MAY also be emitted as output from pure computation (see the core spec for more). This provides a "legal" escape hatch for building higher-level abstraction that incorporate effects.
+
 
 ## 2.1 Pure Functions
 
@@ -215,6 +248,41 @@ At the lowest level, IPVM jobs only describe the loading of immutible data.
 * Actors
 * Vats
 * Map/reduce
+
+``` ipldsch
+type Verification union {
+  | Oracle
+  | Consensus
+  | Optimistic
+  | ZKP
+} representation keyed
+
+type Oracle union {
+  | Attestation "attestation"
+  | ThirdParty(DID)
+}
+
+type Optimistic struct {
+  confirmations Integer
+  referee Referee
+}
+
+type Referee enum {
+  | ZK(ZeroKnowledge)
+  | Trusted(DID)
+}
+
+type Consensus struct {
+  agents [DID]
+}
+
+type ZKP enum {
+  | Groth16
+  | Nova
+  | Nova2
+}
+```
+
 
 # 3 Acknowledgments
 
