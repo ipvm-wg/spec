@@ -24,9 +24,8 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 * Description Formats
   * [Workflow](./workflow/README.md)
-  * [Task](./task/README.md)
-  * [Effect](./effect/README.md)
-  * [UCAN Invocation](https://github.com/ucan-wg/invocation)
+    * [Task](./workflow/README.md#4-task-configuration)
+  * [Host Managed Effects](./effect/README.md)
 * Runtime
   * Distributed Scheduler
     * Planner
@@ -108,6 +107,10 @@ Partial failure in a deterministic system is simplified by using transactional s
 > People are part of the system. The design should match the user's experience, expectations, and mental models.
 >
 > — Jerome Saltzer & M. Frans Kaashoek, Principles of Computer System Design
+
+> 8. A programming language is low level when its programs require attention to the irrelevant.
+>
+> — Alan Perlis, Epigrams on Programming 
 
 While higher-level interfaces over IPVM Workflows MAY be used, ultimately configuration is the UI at this level of abstraction. The core use cases are moving workflows and tasks between machines, logging, and execution. IPVM Workflows aim to provide a computational model with a clear contract ("few if any surprises") for the programmer, while limiting verbosity. IPVM workflows follow the [convention over configuration](https://en.wikipedia.org/wiki/Convention_over_configuration) philosophy with defaults and cascading configuration.
 

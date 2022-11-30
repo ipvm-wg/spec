@@ -35,10 +35,6 @@ IPVM Workflows MUST be suitable for the proposal of workflows and negotiation wi
 
 ## 1.1 Design Philosophy
 
-> 8. A programming language is low level when its programs require attention to the irrelevant.
->
-> — Alan Perlis, Epigrams on Programming 
-
 While IPVM in aggregate is capable of executing arbitrary programs, individual IPVM Workflows are specified declaratively, and tasks workflows MUST be acyclic. Invocation in the decalarative style liberates the programmer from worrying about explicit sequencing, parallelism, memoization, distribution, and nontermination in a trustless settings. Such constraints also grants the runtime control and flexibility to schedule tasks in an efficient and safe manner.
 
 These constraints impose specific practices. There is no first-class concept of persistent objects or loops. Loops, actors, vats, concurrent objects, and so on MAY be implemented on top of IPVM Workflows by enqueuing new workflows with the effect system (much like a [mailbox receive loop](https://www.erlang.org/doc/efficiency_guide/processes.html)).
@@ -80,19 +76,17 @@ The OPTIONAL `parent` field contains the CID of the IPVM Task that initiated it 
 
 The OPTIONAL global `config` object (FIXME section X.Y) sets the configuration for the workflow itself, and defaults for tasks.
 
-## 2.1.4 Defaults
+## 2.1.5 Defaults
 
 The OPTIONAL global `defaults` object (FIXME section X.Y) sets the configuration for the workflow itself, and defaults for tasks.
  
-## 2.1.8 Tasks
+## 2.1.6 Tasks
 
 The `tasks` field contains all of the IPVM [Tasks](FIXME) set to run in this Workflow, each labelled by a human-readable key.
 
-## 2.1.9 Listeners
+## 2.1.7 Exception Handler
 
-The OPTIONAL `on` map MAY contain an `exception` field. 
-
-The `exception` field contains a Task with predefined inputs. See the [Exception Handling](FIXME) section for more.
+The OPTIONAL `exception` field contains a Task with predefined inputs. See the [Exception Handling](#7-exception-handling) section for more.
 
 ## 2.2 IPLD Schema
 
@@ -106,7 +100,8 @@ type Workflow struct {
   v         SemVer
   meta      {String : Any}  (implicit {})
   parent    nullable &Task  (implicit Null)
-  defauts   SystemConfig    (implicit {})
+  global    Config          (implicit {}) 
+  defauts   Config          (implicit {})
   tasks     UCAN.Invocation
   exception nullable &Wasm  (implicit Null)
 }
@@ -119,22 +114,20 @@ type Workflow struct {
   "ipvm/workflow": {
     "v": "0.1.0",
     "meta": {
-      "parent": null,
-    }
+      "tags": ["fission", "bacalhau", "dag-house"]
+    },
+    "global": {
+      "time": [10, "minutes"],
+    },
     "defaults": {
-      "global": {
-        "time": [10, "minutes"],
-      },
-      "task": {
-        "gas": 1000,
-        "memory": [10, "mega", "bytes"]
-      }
+      "gas": 1000,
+      "memory": [10, "mega", "bytes"]
     },
     "exception": "bafkreifsaaztjgknuha7tju6sugvrlbiwbyx5jf2pky2yxx5ifrpjscyhe",
     "tasks": "ucan/invoke": {
       "v": "0.1.0",
       "nnc": "02468",
-      "prf": [ -- FIXME having to resend this is a pain!
+      "prf": [ // FIXME having to resend this is a pain!
         {"/": "bafkreie2cyfsaqv5jjy2gadr7mmupmearkvcg7llybfdd7b6fvzzmhazuy"},
         {"/": "bafkreibbz5pksvfjyima4x4mduqpmvql2l4gh5afaj4ktmw6rwompxynx4"}
       ],
@@ -151,7 +144,7 @@ type Workflow struct {
           ],
           "meta": {
             "ipvm/config": {
-              "time": {"seconds": "100"},
+              "time": {"minutes": "30"},
               "secret": true
             }
           }
@@ -181,12 +174,12 @@ The IPVM configuration struct defines secrecy, quotas, and verification strategy
 |----------|-------------------|-----------------------------------------|----------|--------------------------|
 | `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`                   |
 | `check`  | `Verification`    | [Verification strategy](FIXME)          | No       | `"attestation"`          |
-| `time`   | `TimeInterval`      | Timeout                                 | No       | `[5, "minutes"]`         |
+| `time`   | `TimeInterval`    | Timeout                                 | No       | `[5, "minutes"]`         |
 | `memory` | `InfoSize`        | Memory limit                            | No       | `[100, "kilo", "bytes"]` |
 | `disk`   | `InfoSize`        | Disk limit                              | No       | `[10, "mega", "bytes"]`  |
 | `gas`    | `Integer`         | Gas limit                               | No       | `1000`                   |
 
-This MAY be applied to individual Tasks or set as global defaults.
+This MAY be set globally or configured on [individual Tasks](#4-task-configuration).
 
 ## 3.1 Fields
 
@@ -224,10 +217,10 @@ The OPTIONAL `disk` field configures the upper limit in Wasm gas that the execut
 type SystemConfig struct {
   secret Boolean      (implicit False)
   check  Verification (implicit Attestation)
-  time   TimeInterval
-  memory InfoSize
-  disk   InfoSize
-  gas    Integer
+  gas    Integer      (implicit 0)
+  time   optional TimeInterval
+  memory optional InfoSize
+  disk   optional InfoSize
 }
 ```
 
@@ -237,10 +230,10 @@ type SystemConfig struct {
 {
   "secret": true,
   "check": {"optimistic": {"confirmations": 2, "referee": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4"}},
+  "gas": 5000,
   "time": [45, "minutes"],
   "memory": [500, "kilo", "bytes"],
-  "disk": [20, "mega", "bytes"],
-  "gas": 5000
+  "disk": [20, "mega", "bytes"]
 }
 ```
 
@@ -252,11 +245,9 @@ type SystemConfig struct {
 
 Tasks are the smallest unit work in an IPVM workflow. Tasks describe everything required to the negotate the of work. While all Tasks share some fields, the details MAY be quite different based on the resorce and action being taken. Each Task is restricted to a single [safety level](FIXME), such as a deterministic Wasm module, or [effects](FIXME) like an HTTP `GET` request or Docker container, with no ability to intermix the two directly.
 
-IPVM Tasks are defined as a subtype of [UCAN Tasks](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
+IPVM Tasks are defined as a subtype of [UCAN Tasks](https://github.com/ucan-wg/invocation/blob/main/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
 
-!! FIXME link to invocation main
-
-Tasks MAY be configured in aggragate in the [global defaults](FIXME). Individual Task configuration MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `meta['ipvm/confg']` field.
+Tasks MAY be configured in aggragate in the [global defaults](#215-defaults). Individual Task configuration MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `meta['ipvm/confg']` field.
 
 ## 4.1 JSON Examples
 
@@ -305,7 +296,10 @@ Tasks MAY be configured in aggragate in the [global defaults](FIXME). Individual
     "ipvm/config": {
       "v": "0.1.0",
       "secret": false,
-      "check": {"optimistic": 2}
+      "check": {
+        "optimistic": 17, 
+        "referee": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4"
+      }
     }
   }
 }
@@ -313,7 +307,7 @@ Tasks MAY be configured in aggragate in the [global defaults](FIXME). Individual
 
 ``` json
 {
-  "with": "bafkreidvq3uqoxcxr44q5qhgdk5zk6jvziipyxguirqa6tkh5z5wtpesva",
+  "with": "ipfs://bafkreidvq3uqoxcxr44q5qhgdk5zk6jvziipyxguirqa6tkh5z5wtpesva",
   "do": "docker/run",
   "inputs": {
     "func": "calculate",
@@ -331,10 +325,15 @@ Tasks MAY be configured in aggragate in the [global defaults](FIXME). Individual
       "$FOO": "bar"
     }
   },
-  "ipvm/config": {
-    "v": "0.1.0",
-    "secret": false,
-    "check": {"optimistic": 2}
+  "meta": {
+    "ipvm/config": {
+      "v": "0.1.0",
+      "secret": false,
+      "check": {
+        "optimistic": 2, 
+        "referee": "did:key:zStEZpzSMtTt9k2vszgvCwF4fLQQSyA15W5AQ4z3AR6Bx4eFJ5crJFbuGxKmbma4"
+      }
+    }
   }
 }
 ```
@@ -351,9 +350,11 @@ Note that effectful exception handlers that emit effects (such as network access
 
 # 6 Receipts
 
+
+
 # 7 Appendix
 
-## 6.1 Support Types
+## 7.1 Support Types
 
 ``` ipldsch
 type TimeUnit enum {
@@ -368,8 +369,6 @@ type InfoUnit enum {
   | Bits 
   | Nibble
   | Bytes
-  | Word32
-  | Word64
 } 
 
 type Unit union {
@@ -377,13 +376,16 @@ type Unit union {
   | InfoUnit
 }
 
-type SIPrefix enum {
+type SubPrefix enum {
   | Pico "p"
   | Nano "n"
   | Micro "u"
   | Milli "m"
   | Centi "c"
   | Deci "d"
+}
+
+type SuperPrefix enum {
   | Deca "da"
   | Hecto "ha"
   | Kilo "k"
@@ -394,15 +396,20 @@ type SIPrefix enum {
   | Exa  "E"
 }
 
+type SIPrefix union {
+  | SubPrefix
+  | SuperPrefix
+}
+
 type TimeInterval struct {
   magnitude Integer
-  prefix    optional Prefix
+  prefix    optional SIPrefix
   unit      TimeUnit
 } representation tuple
 
 type InfoSize struct {
   magnitude Integer
-  prefix    optional Prefix
+  prefix    optional SubPrefix
   unit      InfoUnit
 } representation tuple
 
@@ -410,8 +417,14 @@ type Measure union {
   | TimeInterval
   | InfoSize
 }
+```
 
+## 7.1.1 JSON Examples
+
+``` json
 [400, "nano", "seconds"]
+[5, "seconds"]
+[378, "exa", "bytes"]
 ```
 
 # 8 Related Work and Prior Art
