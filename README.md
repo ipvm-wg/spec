@@ -299,6 +299,11 @@ type ZKP enum {
 * [Irakli Gozalishvili](https://github.com/Gozala), DAG House
 * [Hugo Dias](https://github.com/hugomrdias), DAG House
 * [Mikeal Rogers](https://github.com/mikeal/), DAG House
+* Steven Allen
+* Melanie Riise
+* Christine Lemmer-Webber
+* Peter Alvaro
+* Juan Benet
 
 # 4 Prior Art
 
@@ -306,7 +311,11 @@ type ZKP enum {
 * BucketVM (UCAN Invocation)
 * [WarpForge "Formula" v1](https://github.com/warpfork/warpforge/blob/master/examples/110-formula-usage/example-formula-exec.md)
 * [Bacalhau Job Spec](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L192)
+Bloom
+AquaVM
+PACT/HydroLogic
 
+It is not possible to mention the separation of effects from computation without mentioning the algebraic effect lineage from Haskell, OCaml, and Eff. While the overall system looks quite different from the their type-level effects, this work owes a debt to at least Gordon Plotkin and John Power's work on [computational effects](https://homepages.inf.ed.ac.uk/gdp/publications/Overview.pdf), 
 
 # FIXME STASH
 

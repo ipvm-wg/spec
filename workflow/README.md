@@ -29,7 +29,7 @@ An IPVM Workflow is a declarative cofiguration. A Workflow provides everything r
 >
 > J. Paul Morrison, [Flow-Based Programming](https://jpaulm.github.io/fbp/book.html)
 
-The potential complexity of a fully distributed execution by potentially unknown peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike a system like WASI, there is a strict separation of effects from pure data, with no intermixing of computation with [promise pipelining](http://erights.org/elib/distrib/pipeline.html) (essentially distributed pipes).
+The potential complexity of a fully distributed execution by potentially unknown peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike s systems like WASI, there is a strict separation of effects from pure data, an emphasis on verifiability, and [promise pipelining](http://erights.org/elib/distrib/pipeline.html).
 
 IPVM Workflows MUST be suitable for the proposal of workflows and negotiation with provuders on a discovery layer (ahead of credential delegation), execution on untrusted peer machines, and verification. Workflows SHOULD provide a sufficiently expressive base to build more complex models such as actors, event-driven systems, map-reduce, and so on.
 
@@ -181,16 +181,18 @@ type Listeners struct {
 
 # 3 Configuation
 
-The IPVM configuration struct sets secrecy, quotas, and verification strategy.
+The IPVM configuration struct defines secrecy, quotas, and verification strategy:
 
 | Field    | Type              | Description                             | Required | Default                  |
 |----------|-------------------|-----------------------------------------|----------|--------------------------|
 | `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`                   |
-| `check`  | `Verification`    | [Verification strategy](FIXME)         | No       | `"attestation"`          |
+| `check`  | `Verification`    | [Verification strategy](FIXME)          | No       | `"attestation"`          |
 | `time`   | `TimeLength`      | Timeout                                 | No       | `[5, "minutes"]`         |
 | `memory` | `InfoSize`        | Memory limit                            | No       | `[100, "kilo", "bytes"]` |
 | `disk`   | `InfoSize`        | Disk limit                              | No       | `[10, "mega", "bytes"]`  |
 | `gas`    | `Integer`         | Gas limit                               | No       | `1000`                   |
+
+This MAY be applied to individual Tasks or set as global defaults.
 
 ## 3.1 Fields
 
@@ -254,10 +256,9 @@ type SystemConfig struct {
 >
 > — [The Protomen](https://en.wikipedia.org/wiki/The_Protomen), The Good Doctor
 
-Tasks are the smallest unit of negotiated work in an IPVM workflow. Each Task is restricted to a single type, such as a deterministic Wasm module, or [effects](fixme) like an HTTP `GET` request. Tasks describe everything required to the negotate the of work. While all Tasks share some things in common, the details MAY be quite different.
+Tasks are the smallest unit work in an IPVM workflow. Tasks describe everything required to the negotate the of work. While all Tasks share some fields, the details MAY be quite different based on the resorce and action being taken. Each Task is restricted to a single [safety level](FIXME), such as a deterministic Wasm module, or [effects](FIXME) like an HTTP `GET` request or Docker container, with no ability to intermix the two directly.
 
-
-IPVM Tasks are defined as a subtype of [UCAN Actions](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
+IPVM Tasks are defined as a subtype of [UCAN Tasks](https://github.com/ucan-wg/invocation/blob/rough/README.md#32-ipld-schema). Task types MAY require specific fields in the `inputs` field.  Timeouts, gas, credits, transactional guarantees, result visibility, and so on MAY be separately confifured in the `ipvm/config` field.
 
 !! FIXME link to invocation main
 
@@ -344,9 +345,21 @@ Tasks MAY be configured in aggragate in the [global defaults](FIXME). Individual
 }
 ```
 
-# 5 Appendix
+# 5 Exception Handler
 
-## 5.1 Support Types
+Note that while IPVM MUST treat the pure tasks together as transactional, it is not possible to roll back any destructive effects that have been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect.
+
+It is often desirable to fire a specific workflow in the case that a workflow fails. Such cases MAY include wall-clock timeouts, running out of gas, loss of network access, or ___, among others. The exception handler fills a similar role to [GenServer.handle_info/2](https://hexdocs.pm/elixir/1.14.2/GenServer.html#c:handle_info/2).
+
+Each task MAY include a failure workflow to run on failure.
+
+Note that effectful exception handlers that emit effects (such as network access) MAY fail for the same reason as the workflow that caused the exception to be thrown. Running a pure value is RECOMMENDED.
+
+# 6 Receipts
+
+# 7 Appendix
+
+## 6.1 Support Types
 
 ``` ipldsch
 type TimeUnit enum {
@@ -408,46 +421,32 @@ type Measure union {
 [400, "nano", "seconds"]
 ```
 
-# 5 Exception Handler
+# 8 Related Work and Prior Art
 
-Note that while IPVM MUST treat the pure tasks together as transactional, it is not possible to roll back any destructive effects that have been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect.
+The [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126) spec is a 
 
-It is often desirable to fire a specific workflow in the case that a workflow fails. Such cases MAY include wall-clock timeouts, running out of gas, loss of network access, or ___, among others. The exception handler fills a similar role to [GenServer.handle_info/2](https://hexdocs.pm/elixir/1.14.2/GenServer.html#c:handle_info/2).
+BucketVM and `w3-machines` are two approaches from [DAG House](https://dag.house) to extend UCAN to invocations and workflows. At time of writing, both approaches are focused on invocation inside a cloud microservice deployment. Configuration is not required, as jobs are not negotiated.
 
-Each task MAY include a failure workflow to run on failure.
+[WarpForge Formulas](https://github.com/warptools/warpforge/blob/master/examples/100-formula-parse/example-formulas.md) describe how to reproducably build and cache packages. The functionality is a specialization of IPVM workflows, and may be configurable with IPVM in the future.
 
-Note that effectful exception handlers that emit effects (such as network access) MAY fail for the same reason as the workflow that caused the exception to be thrown. Running a pure value is RECOMMENDED.
+[AWS Lambda Workflows](https://docs.aws.amazon.com/amazonswf/latest/developerguide/swf-dg-create-workflow.html)
 
-# 6 Related Work and Prior Art
+[GitHub Workflows](https://docs.github.com/en/actions/using-workflows)
 
-* [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126)
-* [BucketVM](https://purrfect-tracker-45c.notion.site/bucket-vm-73c610906fe44ded8117fd81913c7773)
-* [WarpForge Formulas](https://github.com/warptools/warpforge/blob/master/examples/100-formula-parse/example-formulas.md)
+[Cloud Native Builpacks](https://buildpacks.io/) preconfigure and 
 
-AWS Lambda workflows
-GH Workflows
-OCI
-E Language
-CapNet
-Project Naiad
-Bloom
-PACT/HydroLogic
-BucketVM
-Bacalhau
-AquaVM
+[Open Container Initiative (OCI)](https://opencontainers.org/)   (https://github.com/opencontainers/runtime-spec/blob/v1.0.0/config.md)
 
-It is not possible to mention the separation of effects from computation without mentioning the algebraic effect lineage from Haskell, OCaml, and Eff. While the overall system looks quite different from the their type-level effects, this work owes a debt to at least Gordon Plotkin and John Power's work on [computational effects](https://homepages.inf.ed.ac.uk/gdp/publications/Overview.pdf), 
+[Project Naiad](https://www.microsoft.com/en-us/research/video/introducing-project-naiad-and-differential-dataflow/)
 
-# 7 Acknowledgments
+# 9 Acknowledgments
 
-* Steven Allen
-* Melanie Riise
-* Christine Lemmer-Webber
-* Peter Alvaro
-* Juan Benet
-* Mark Miller
-* Blaine Cook
-* Luke Marsden
-* Quinn Wilton
-* Zeeshan Lakhani
-* Irakli Gozalishvili
+[Luke Marsden](https://github.com/lukemarsden) for a long fateful discussion while [stuck on a tarmac](https://www.theguardian.com/world/2022/nov/04/spanish-airspace-partially-closed-as-chinese-rocket-debris-falls-to-earth) about how to make IPVM and Bacalhau work more closely together.
+
+Many thanks to [Quinn Wilton](https://github.com/QuinnWilton) for her review of the spec, suggestions
+
+Many thanks to [Irakli Gozalishvili](https://github.com/Gozala) for
+
+[Blaine Cook](https://github.com/blaine)
+
+[Zeeshan Lakhani](https://github.com/zeeshanlakhani)
