@@ -31,7 +31,7 @@ An IPVM Workflow is a declarative cofiguration. A Workflow provides everything r
 
 The potential complexity of a fully distributed execution by untrusted peers is very high. IPVM Workflows reduce the number of possible states by forcing explicit handling of any dangerous effects. The IPVM Workflow spec is a declarative document that MAY be inspected, transmitted, logged, and negotiated. Unlike s systems like WASI, there is a strict separation of effects from pure data, an emphasis on verifiability, and [promise pipelining](http://erights.org/elib/distrib/pipeline.html).
 
-IPVM Workflows MUST be suitable for the proposal of workflows and negotiation with provuders on a discovery layer (ahead of credential delegation), execution on untrusted peer machines, and verification. Workflows SHOULD provide a sufficiently expressive base to build more complex models such as actors, event-driven systems, map-reduce, and so on.
+IPVM Workflows MUST be suitable for the proposal of workflows and negotiation with providers on a discovery layer (ahead of credential delegation), execution on untrusted peer machines, and verification. Workflows SHOULD provide a sufficiently expressive base to build more complex models such as actors, event-driven systems, map-reduce, and so on.
 
 ## 1.1 Design Philosophy
 
@@ -441,30 +441,28 @@ type Measure union {
 
 # 8 Related Work and Prior Art
 
-The [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126) spec is a 
+The [Bacalhau Job (Alpha)](https://github.com/filecoin-project/bacalhau/blob/8568239299b5881bc90e3d6be2c9aa06c0cb3936/pkg/model/job.go#L113-L126) spec is a complete runner spec for Docker, Wasm, and Python source. At time of writing, it runs on a volunteer network, and has plans to integrate an authority layer.
 
-BucketVM and `w3-machines` are two approaches from [DAG House](https://dag.house) to extend UCAN to invocations and workflows. At time of writing, both approaches are focused on invocation inside a cloud microservice deployment. Configuration is not required, as jobs are not negotiated.
+BucketVM and [`w3-machines`](https://github.com/web3-storage) are two approaches from [DAG House](https://dag.house) to extend UCAN to invocations and workflows. At time of writing, both approaches are focused on invocation inside a cloud microservice deployment. Configuration is not required, as jobs are not negotiated.
+
+[Cloud Native Builpacks](https://buildpacks.io/) are descriptions of an environment that stack together. They output an [OCI](https://opencontainers.org/) container.
+
+[GitHub Workflows](https://docs.github.com/en/actions/using-workflows) is a configuration to run one or more jobs, hooked into events on their platform. Workflows can be composed out of discrete actions or from other workflows.
+
+[Lambda Workflows](https://docs.aws.amazon.com/amazonswf/latest/developerguide/swf-dg-create-workflow.html) are a serverless workflow layer built on top of AWS, and thus integrates with their other offerings like IAM, S3, payments, and so on.
+
+[Project Naiad](https://www.microsoft.com/en-us/research/video/introducing-project-naiad-and-differential-dataflow/) and its lineage (e.g. [Timely Dataflow](https://timelydataflow.github.io/timely-dataflow/), [Differential Dataflow](https://timelydataflow.github.io/differential-dataflow/)) offer an extremely powerful dataflow model, including differential updates, control flow cycles, long running processes, but in a trusted environment. Such features could be supported for a subset of task types in IPVM in the future.
 
 [WarpForge Formulas](https://github.com/warptools/warpforge/blob/master/examples/100-formula-parse/example-formulas.md) describe how to reproducably build and cache packages. The functionality is a specialization of IPVM workflows, and may be configurable with IPVM in the future.
-
-[AWS Lambda Workflows](https://docs.aws.amazon.com/amazonswf/latest/developerguide/swf-dg-create-workflow.html)
-
-[GitHub Workflows](https://docs.github.com/en/actions/using-workflows)
-
-[Cloud Native Builpacks](https://buildpacks.io/) preconfigure and 
-
-[Open Container Initiative (OCI)](https://opencontainers.org/)   (https://github.com/opencontainers/runtime-spec/blob/v1.0.0/config.md)
-
-[Project Naiad](https://www.microsoft.com/en-us/research/video/introducing-project-naiad-and-differential-dataflow/)
 
 # 9 Acknowledgments
 
 [Luke Marsden](https://github.com/lukemarsden) for a long fateful discussion while [stuck on a tarmac](https://www.theguardian.com/world/2022/nov/04/spanish-airspace-partially-closed-as-chinese-rocket-debris-falls-to-earth) about how to make IPVM and Bacalhau work more closely together.
 
-Many thanks to [Quinn Wilton](https://github.com/QuinnWilton) for her review of the spec, suggestions
+Thanks to [James Walker](https://github.com/walkah) for helping draw parallels between CIDs, IPLD, and raw bytes for promises in support of complex data pipelines.
 
-Many thanks to [Irakli Gozalishvili](https://github.com/Gozala) for
+Many thanks to [Quinn Wilton](https://github.com/QuinnWilton) for her review of the spec, suggesting terms that would be most familiar to developers, talking through how to make the exception handling useful-but-safe in a static workflow, and suggesting further work involving fixed point computation.
 
-[Blaine Cook](https://github.com/blaine)
+Many thanks to [Irakli Gozalishvili](https://github.com/Gozala) for the long discussions about invocation needs at [DAG House](https://dag.house), keeping the conversation grounded in a capabilities worldview, and for the many, many comments on various iterations of this spec across two repos.
 
-[Zeeshan Lakhani](https://github.com/zeeshanlakhani)
+Thanks to [Blaine Cook](https://github.com/blaine) for several conversations about developer expectations and effect systems.
