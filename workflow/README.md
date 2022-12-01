@@ -21,7 +21,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 # 0 Abstract
 
-An IPVM Workflow is a declarative cofiguration. A Workflow provides everything required to execute one or more tasks: defaults, tasks and their dependencies, authorization, metadata, signatures, and so on.
+An IPVM Workflow is a declarative cofiguration that extends a [UCAN Invocation](https://github.com/ucan-wg/invocation). A Workflow provides everything required to execute one or more tasks: defaults, tasks and their dependencies, authorization, metadata, signatures, and so on.
 
 # 1 Introduction
 
@@ -48,15 +48,15 @@ The outer wrapper of a workflow MUST contain the following fields:
 | `ipvm/workflow` | `Workflow` | IPVM Workflow                                                           | Yes      |
 | `signature`     | `VarSig`   | [VarSig](https://github.com/ChainAgnostic/varsig/) of serialized fields | Yes      |
 
-| Field      | Type                | Description                                                                         | Required | Default |
-|------------|---------------------|-------------------------------------------------------------------------------------|----------|---------|
-| `v`        | `"0.1.0"`           | IPVM workflow version                                                               | Yes      |         |
-| `meta`     | `{String : Any}`    | User-defined object (tags, comments, etc)                                           | No       | `{}`    |
-| `parent`   | `&Workflow or Null` | The CID of the initiating workflow (if any) FIXME probably want the task & workflow | No       | `Null`  |
-| `config`   | `Config`            |                                                                                     | No       | `{}`    |
-| `defaults` | `Config`            |                                                                                     | No       | `{}`    |
-| `tasks`    | `UCAN.Invocation`   | UCAN Invocation                                                                     | Yes      |         |
-| `on`       | `Listeners`         | IPVM event listeners                                                                | No       | `{}`    |
+| Field      | Type                         | Description                                                            | Required | Default |
+|------------|------------------------------|------------------------------------------------------------------------|----------|---------|
+| `v`        | `"0.1.0"`                    | IPVM workflow version                                                  | Yes      |         |
+| `meta`     | `{String : Any}`             | User-defined object (tags, comments, etc)                              | No       | `{}`    |
+| `parent`   | `[&Workflow, Label] or Null` | The workflow & task label that initiated the current workflow (if any) | No       | `Null`  |
+| `config`   | `Config`                     | Global configuration (e.g. timeout for the entire workflow)            | No       | `{}`    |
+| `defaults` | `Config`                     | Individual task config defaults                                        | No       | `{}`    |
+| `tasks`    | `UCAN.Invocation`            | UCAN Invocation                                                        | Yes      |         |
+| `catch`    | `&WasmTask`                  | Deterministic Wasm that fires on exceptions                            | No       | `{}`    |
 
 ## 2.1 Fields
 
@@ -74,7 +74,7 @@ The OPTIONAL `parent` field contains the CID of the IPVM Task that initiated it 
 
 ## 2.1.4 Config
 
-The OPTIONAL global `config` object (FIXME section X.Y) sets the configuration for the workflow itself, and defaults for tasks.
+The OPTIONAL global [`config` object](#3-configuration) sets the configuration for the workflow itself, and defaults for tasks.
 
 ## 2.1.5 Defaults
 
@@ -98,13 +98,18 @@ type SignedWorkflow struct {
 
 type Workflow struct {
   v       SemVer
-  meta    {String : Any}  (implicit {})
-  parent  nullable &Task  (implicit Null)
-  global  Config          (implicit {}) 
-  defauts Config          (implicit {})
+  meta    {String : Any}   (implicit {})
+  parent  nullable TaskRef (implicit Null)
+  global  Config           (implicit {}) 
+  defauts Config           (implicit {})
   tasks   UCAN.Invocation
-  catch   nullable &Wasm  (implicit Null)
+  catch   nullable &Wasm   (implicit Null)
 }
+
+type TaskRef struct {
+  inv  &Invocation
+  task String -- Label for the task
+} representation tuple
 ```
 
 ## 2.3 JSON Exmaples
@@ -127,7 +132,7 @@ type Workflow struct {
     "tasks": "ucan/invoke": {
       "v": "0.1.0",
       "nnc": "02468",
-      "prf": [ // FIXME having to resend this is a pain!
+      "prf": [ 
         {"/": "bafkreie2cyfsaqv5jjy2gadr7mmupmearkvcg7llybfdd7b6fvzzmhazuy"},
         {"/": "bafkreibbz5pksvfjyima4x4mduqpmvql2l4gh5afaj4ktmw6rwompxynx4"}
       ],
@@ -247,8 +252,6 @@ Tasks are the smallest level of work granularity a workflow. Tasks describe ever
 
 Tasks MAY be configured in aggragate in the [global defaults](#215-defaults). Individual Task configuration MUST be embedded inside of a [UCAN Action](https://github.com/ucan-wg/invocation)'s `meta['ipvm/confg']` field.
 
-Note that while all Tasks have a resource (URI) and action, the details MAY be quite different. Each Task is restricted to a specific [safety level](FIXME) based on its resource/action pair (such as a deterministic Wasm module or [effects](FIXME) like an HTTP `GET` request). Tasks MUST be scheduled according to its safety properties, which MAY have a performance impact.
-
 ## 4.1 Fields
 
 Recall UCAN Invocation Tasks:
@@ -285,14 +288,6 @@ An OPTIONAL IPVM `Config` MAY be included at the `meta['ipvm/config']` path. The
 
 ``` js
 {
-  "supply-gas": {
-    "with": "gas:reserve://mine", // Or something... needs work at least FIXME
-    "do": "gas/supply",
-    "inputs": {
-      "on": ["/", "some-wasm"],
-      "max": 1000
-    }
-  },
   "some-wasm": {
     "with": "wasm:1:Qm12345", // Or something... wasm:Qm12345?
     "do": "ipvm/run",
@@ -410,14 +405,14 @@ type SubPrefix enum {
 }
 
 type SuperPrefix enum {
-  | Deca "da"
+  | Deca  "da"
   | Hecto "ha"
-  | Kilo "k"
-  | Mega "M"
-  | Giga "G"
-  | Tera "T"
-  | Peta "P"
-  | Exa  "E"
+  | Kilo  "k"
+  | Mega  "M"
+  | Giga  "G"
+  | Tera  "T"
+  | Peta  "P"
+  | Exa   "E"
 }
 
 type SIPrefix union {
