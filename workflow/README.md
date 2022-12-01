@@ -260,7 +260,7 @@ Recall UCAN Invocation Tasks:
 | `inputs` | `Any`            |                                                | Yes      |         |
 | `meta`   | `{String : Any}` | Fields that will be ignored during memoization | No       | `{}`    |
 
-An OPTIONAL IPVM `Config` MAY be included at the `meta['ipvm/config']` path. If included, the `Config` MUST set the IPVM configuration for this Task, overwriting any of the fields on the envelope's top-level `defaults` field, or system-wide defaults.
+An OPTIONAL IPVM `Config` MAY be included at the `meta['ipvm/config']` path. The `meta` field SHOULD not captured as part of task memoization, so this informtaion will be omitted from the distributed invocation table. If included, the `Config` MUST set the IPVM configuration for this Task, overwriting any of the fields on the envelope's top-level `defaults` field, or system-wide defaults.
 
 ## 4.3 JSON Examples
 
@@ -352,17 +352,28 @@ An OPTIONAL IPVM `Config` MAY be included at the `meta['ipvm/config']` path. If 
 
 # 5 Exception Handler
 
-Note that while IPVM MUST treat the pure tasks together as transactional, it is not possible to roll back any destructive effects that have been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect.
+If present, the OPTIONAL `catch` field MUST be run in response to a `Task` returning on the `Failure` branch. The determinitsic & pure Wasm module MUST take a `Failure` object as input, and MUST return data in the following shape:
 
-It is often desirable to fire a specific workflow in the case that a workflow fails. Such cases MAY include wall-clock timeouts, running out of gas, loss of network access, or ___, among others. The exception handler fills a similar role to [GenServer.handle_info/2](https://hexdocs.pm/elixir/1.14.2/GenServer.html#c:handle_info/2).
+``` ipldsch
+type Handle union {
+  | String "rewire" -- Task name inside the current Workflow
+  | String "msg"    -- Format the error message and panic
+}
+```
 
-Each task MAY include a failure workflow to run on failure.
+If the `msg` branch is returned, the invocation MUST immedietly rethrow with the update message.
 
-Note that effectful exception handlers that emit effects (such as network access) MAY fail for the same reason as the workflow that caused the exception to be thrown. Running a pure value is RECOMMENDED.
+Note that while IPVM MUST treat the pure tasks together as transactional. It is not possible to roll back any destructive effects that have already been run. As such, it is RECOMMENDED to have few (if any) tasks depend on the output of a destructive effect, so they can be scheduled at the end of the workflow.
 
-# 6 Receipts
+# 6 Receipt Output
 
+| Field  | Type            | Description                                                           | Required | Default |
+|--------|-----------------|-----------------------------------------------------------------------|----------|---------|
+| `inv`  | `&Invocation`   | CID of the Invocation that generated this response                    | Yes      |         |
+| `out`  | `{String: Any}` | The results of each call, the task's label. MAY contain sub-receipts. | Yes      |         |
+| `meta` | `Any`           | Non-normative extended fields                                         | No       | `null`  |
 
+If the `catch` field is set on the outer `Workflow`, The `out` field MAY include the output under the `ipvm/catch` key
 
 # 7 Appendix
 
