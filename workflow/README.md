@@ -356,9 +356,10 @@ If present, the OPTIONAL `catch` field MUST be run in response to a `Task` retur
 
 ``` ipldsch
 type Handle union {
-  | String "rewire" -- Task name inside the current Workflow
-  | String "msg"    -- Format the error message and panic
-}
+  | Success "ok"     -- End task with Success object
+  | String  "rewire" -- Task name inside the current Workflow
+  | String  "msg"    -- Format the error message and panic
+} respresentation keyed
 ```
 
 If the `msg` branch is returned, the invocation MUST immedietly rethrow with the update message.
