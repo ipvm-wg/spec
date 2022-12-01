@@ -25,7 +25,10 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 * Description Formats
   * [Workflow](./workflow/README.md)
     * [Task](./workflow/README.md#4-task-configuration)
-  * [Host Managed Effects](./effect/README.md)
+  * Host-Managed Effects
+  * Capabilty Model
+    * SPKI
+    * OCap
 * Runtime
   * Distributed Scheduler
     * Planner
@@ -33,9 +36,6 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 * Lifecycle
   * Request
   * Negotiation
-  * Capabilty
-    * SPKI
-    * OCapN
   * Verification
   * Payment Channel
 * Wasm μKernel
@@ -46,17 +46,14 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
   * Randomness
   * HTTP
   * FVM
-  * Bacalhau
 
 # 0 Abstract
 
-IPVM
-
-An IPVM "job" is a declarative description of WebAssembly and managed effects to be run by the IPVM runtime.
+IPVM brings content addressing to computation, via a distributed runtime built on top of IPFS. It leverages the deterministic subset of WebAssembly plus a ukernel that supports IPFS content resolution, memoization, and adaptive optomization.
 
 # 1 Motivation
 
-IPVM provides a deterministic-by-default, content addressed execution environment. Execution may always be run locally, but there are many cases where remote exection is desirable: access to large data, faster processors, trusted execution environments, or access to specialized hardware, among others.
+IPVM provides a deterministic-by-default, content addressed execution environment. Computation MAY be run locally or remotely. While local operation has zero latency, there are many cases where remote exection is desirable: access to large data, faster processors, trusted execution environments, or access to specialized hardware, among others.
 
 > Because he was talking (mainly) to a set of platform folks he admonished us to think about how we can build platforms that lead developers to write great, high performance code such that developers just fall into doing the “right thing”. Rico called this the Pit of Success.
 >
@@ -77,30 +74,6 @@ Partial failure in a deterministic system is simplified by using transactional s
 
 # Stack Diagrram
 
-```
-┌───────────────────────────────────────────────┬───────────────────────────┐
-│                                               │                           │
-│             Human Configuration:              │                           │
-│  Defaults, Exception Handling, Comments, Tags │                           │
-│               (IPVM Workflow)                 │                           │
-│                                               │  Multi-Request Pipelining │
-├───────────────────────────────────────────────┤     (UCAN Invocation)     │
-│                                               │                           │
-│      IPVM Config, Verification Level, etc     │                           │
-│                 (IPVM Task)                   │                           │
-│                                               │                           │
-├───────────────────────────────────────────────┴───────────────────────────┤
-│                                                                           │
-│                               Call Graph                                  │
-│                            (UCAN Invocation)                              │
-│                                                                           │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│                                Authority                                  │
-│                               (UCAN Core)                                 │
-│                                                                           │
-└───────────────────────────────────────────────────────────────────────────┘
-```
 
 ## 1.2 Humane Design
 

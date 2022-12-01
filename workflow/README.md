@@ -39,6 +39,37 @@ While IPVM in aggregate is capable of executing arbitrary programs, individual I
 
 These constraints impose specific practices. There is no first-class concept of persistent objects or loops. Loops, actors, vats, concurrent objects, and so on MAY be implemented on top of IPVM Workflows by enqueuing new workflows with the effect system (much like a [mailbox receive loop](https://www.erlang.org/doc/efficiency_guide/processes.html)).
 
+## 1.2 Foundational Authority
+
+IPVM workflows are built on top of cryptographic capabilities, providing a strong basis for distributed computation in trustless networks. This even provides a clear basis for crossing Web 2.0 and Web3 systems, other computation networks, local operation (in full or part).
+
+The IPVM Workflow spec extends on several other specs that have been developed to provide this basis:
+
+```
+┌───────────────────────────────────────────────┬───────────────────────────┐
+│                                               │                           │
+│             Human Configuration:              │                           │
+│  Defaults, Exception Handling, Comments, Tags │                           │
+│               (IPVM Workflow)                 │                           │
+│                                               │  Multi-Request Pipelining │
+├───────────────────────────────────────────────┤     (UCAN Invocation)     │
+│                                               │                           │
+│      IPVM Config, Verification Level, etc     │                           │
+│                 (IPVM Task)                   │                           │
+│                                               │                           │
+├───────────────────────────────────────────────┴───────────────────────────┤
+│                                                                           │
+│                                 Call Graph                                │
+│                             (UCAN Invocation)                             │
+│                                                                           │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│                                 Authority                                 │
+│                                (UCAN Core)                                │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
 # 2 Envelope
 
 The outer wrapper of a workflow MUST contain the following fields:
@@ -178,7 +209,7 @@ The IPVM configuration struct defines secrecy, quotas, and verification strategy
 | Field    | Type              | Description                             | Required | Default                  |
 |----------|-------------------|-----------------------------------------|----------|--------------------------|
 | `secret` | `Boolean or null` | Whether the output is unsafe to publish | No       | `null`                   |
-| `check`  | `Verification`    | [Verification strategy](FIXME)          | No       | `"attestation"`          |
+| `check`  | `Verification`    | Verification strategy                   | No       | `"attestation"`          |
 | `time`   | `TimeInterval`    | Timeout                                 | No       | `[5, "minutes"]`         |
 | `memory` | `InfoSize`        | Memory limit                            | No       | `[100, "kilo", "bytes"]` |
 | `disk`   | `InfoSize`        | Disk limit                              | No       | `[10, "mega", "bytes"]`  |
