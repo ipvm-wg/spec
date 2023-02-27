@@ -206,7 +206,7 @@ We can learn a lot from adjacent projects. Some of these include:
 
 Autocodec, IPVM, and wasm-ipfs all involve Wasm and IPFS. They are distinct projects, though sharing modules and learning between them is a nice-to-have. Having a Wasm interpreter in every IPFS node makes the argument for all of these projects much easier.
 
-wasm-ipfs is the replacement of IPFS internals with IPFS, to help share high-quality components across implementations and platforms.
+wasm-ipfs is the replacement of IPFS internals with Wasm, to help share high-quality components across implementations and platforms.
 
 Autocodec is an attempt to replace in-built IPFS codecs with an ad hoc mechanism at read-time. The basic idea is "what if the codec executable was wrapped directly around the IPLD to interpret?"
 
